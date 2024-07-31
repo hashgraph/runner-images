@@ -108,6 +108,11 @@ jobs:
   build-legacy-images:
     name: ${{ inputs.custom-job-label || 'Build' }}
     runs-on: [self-hosted, Linux, medium, ephemeral]
+    services: 
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
@@ -116,17 +121,6 @@ jobs:
 
       - name: Checkout Code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-
-      - name: Install KillAll
-        run: |
-          if ! command -v killall >/dev/null 2>&1; then
-            echo "::group::Updating APT Repository Indices"
-              sudo apt update
-            echo "::endgroup::"
-            echo "::group::Installing KillAll"
-              sudo apt install -y psmisc
-            echo "::endgroup::"
-          fi
 
       - name: Install Make
         run: |
@@ -138,53 +132,6 @@ jobs:
               sudo apt install -y make
             echo "::endgroup::"
           fi
-
-      - name: Create Docker Working Directory
-        run: |
-          USER="$(id -un)"
-          GROUP="$(id -gn)"
-          sudo mkdir -p /x
-          sudo chown -vR ${USER}:${GROUP} /x
-          sudo ls -lah /x
-
-      - name: Remove Docker from Self Hosted Runners
-        run: |
-          set -x
-          sudo killall dockerd || true
-          sudo killall containerd || true
-          sudo rm -rvf /usr/bin/*containerd* || true
-          sudo rm -rvf /usr/bin/docker* || true
-          sudo rm -rvf /usr/local/bin/docker* || true
-          sudo rm -rvf /usr/local/bin/*lima* || true
-
-      - name: Setup Containerd Support
-        uses: crazy-max/ghaction-setup-containerd@60acbf31e6572da7b83a4ed6b428ed92a35ff4d7 # v3.0.0
-        with:
-          containerd-version: v1.7.2
-
-      - name: Setup Docker Support
-        uses: crazy-max/ghaction-setup-docker@78318f8be53384b971671f27d81f5e72526c102d # v3.3.0
-        env:
-          HOME: /x
-        with:
-          version: v25.0.5
-          daemon-config: |
-            {
-              "registry-mirrors": [
-                "https://artifacts.swirldslabs.io/central-docker-external/"
-              ]
-            }
-
-      - name: Configure Default Docker Context
-        run: |
-          set -x
-          if grep setup-docker-action < <(docker context ls --format '{{ .Name }}') >/dev/null; then
-            docker context rm -f setup-docker-action
-          fi
-
-          DOCKER_CONTEXT_PATH="$(sudo find /x -name docker.sock | tr -d '[:space:]')"
-          docker context create setup-docker-action --docker "host=unix://${DOCKER_CONTEXT_PATH}"
-          docker context use setup-docker-action
 
       - name: Setup QEmu Support
         uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
@@ -208,18 +155,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Local Container Registry
-        if: ${{ inputs.dry-run-enabled == true }}
-        run: docker run -e REGISTRY_HTTP_ADDR=0.0.0.0:5000 -d --network=host --restart=always --name registry registry:latest
-
-      - name: Show Docker Containers
-        if: ${{ inputs.dry-run-enabled == true }}
-        run: docker ps -a
-
-      - name: Show Local Container Registry Logs
-        if: ${{ inputs.dry-run-enabled == true }}
-        run: docker logs registry
 
       - name: Calculate Docker Registry
         id: registry
@@ -252,11 +187,3 @@ jobs:
         working-directory: legacy/runner
         if: ${{ inputs.build-dind-rootless-image }}
         run: make docker-buildx-dind-rootless
-
-      - name: Show Docker Containers
-        if: ${{ failure() && inputs.dry-run-enabled == true }}
-        run: docker ps -a
-
-      - name: Show Local Container Registry Logs
-        if: ${{ failure() && inputs.dry-run-enabled == true }}
-        run: docker logs registry
