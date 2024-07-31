@@ -211,7 +211,7 @@ jobs:
 
       - name: Setup Local Container Registry
         if: ${{ inputs.dry-run-enabled == true }}
-        run: docker run -d -p 5000:5000 --restart=always --name registry registry:latest
+        run: docker run -e REGISTRY_HTTP_ADDR=0.0.0.0:5000 -d --network=host --restart=always --name registry registry:latest
 
       - name: Show Docker Containers
         if: ${{ inputs.dry-run-enabled == true }}
