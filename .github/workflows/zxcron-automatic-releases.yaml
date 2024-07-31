@@ -1,0 +1,97 @@
+##
+# Copyright (C) 2024 Hedera Hashgraph, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##
+
+name: "Release Legacy Images"
+on:
+  schedule:
+    - cron: "0 15 * * *"
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  id-token: write
+  contents: read
+  actions: write
+
+jobs:
+  versions:
+    name: Upstream Versions
+    uses: ./.github/workflows/zxc-retrieve-upstream-versions.yaml
+
+  safety-checks:
+    name: Safety Checks
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    needs:
+      - versions
+    outputs:
+      release-needed: ${{ steps.release.outputs.needed }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Install GH CLI
+        uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authorize GH CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Check for Existing Releases
+        id: release
+        run: |
+          NEEDED="true"
+          if gh release view v${{ needs.versions.outputs.runner }} >/dev/null 2>&1; then
+            echo "::info title=Release Version::Release v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
+            NEEDED="false"
+          fi
+          
+          echo "needed=${NEEDED}" >> "${GITHUB_OUTPUT}"
+
+  legacy-release:
+    name: Legacy Release
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    needs:
+      - versions
+      - safety-checks
+    if: ${{ needs.safety-checks.outputs.release-needed == 'true' }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Install GH CLI
+        uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authorize GH CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Launch Legacy Release Workflow
+        run: |
+            gh workflow run "flow-release-legacy-images.yaml" \
+              -r main \
+              -f "runner-version=${{ needs.versions.outputs.runner }}" \
+              -f "runner-container-hooks-version=${{ needs.versions.outputs.hooks }}" \
+              -f "build-default-image=true" \
+              -f "build-dind-image=true" \
+              -f "dry-run-enabled=false"
