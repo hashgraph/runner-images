@@ -211,7 +211,15 @@ jobs:
 
       - name: Setup Local Container Registry
         if: ${{ inputs.dry-run-enabled == true }}
-        run: docker run --rm -d --network host --name registry registry:latest
+        run: docker run -d --network host --name registry registry:latest
+
+      - name: Show Docker Containers
+        if: ${{ inputs.dry-run-enabled == true }}
+        run: docker ps -a
+
+      - name: Show Local Container Registry Logs
+        if: ${{ inputs.dry-run-enabled == true }}
+        run: docker logs registry
 
       - name: Calculate Docker Registry
         id: registry
