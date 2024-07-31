@@ -203,7 +203,7 @@ jobs:
             DOCKER_REGISTRY_PREFIX="localhost:5000/${{ github.repository_owner }}"
           fi
           
-          echo "prefix=${DOCKER_REGISTRY_PREFIX}" >> "${GITHUB_OUTPUTS}"
+          echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
 
       - name: Build Default Image
         env:

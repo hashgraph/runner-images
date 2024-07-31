@@ -94,11 +94,11 @@ jobs:
         run: |
           LATEST_TAG="$(gh release view -R actions/runner --json tagName | jq -r '.tagName')"
           VERSION="$(semver get release ${LATEST_TAG})"
-          echo "::set-output name=version::${VERSION}"
+          echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
 
       - name: Retrieve Runner Container Hooks Version
         id: hooks
         run: |
           LATEST_TAG="$(gh release view -R actions/runner-container-hooks --json tagName | jq -r '.tagName')"
           VERSION="$(semver get release ${LATEST_TAG})"
-          echo "::set-output name=version::${VERSION}"
+          echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
