@@ -34,6 +34,7 @@ jobs:
   versions:
     name: Upstream Versions
     uses: ./.github/workflows/zxc-retrieve-upstream-versions.yaml
+    if: ${{ !github.event.pull_request.head.repo.fork }}
 
   legacy-images:
     name: Legacy Images
