@@ -1,0 +1,190 @@
+##
+# Copyright (C) 2024 Hedera Hashgraph, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##
+
+name: "ZXC: Build Legacy Images"
+# This reusable component is called by the following workflows:
+# - .github/workflows/flow-pull-request-checks.yaml
+# - .github/workflows/flow-build-application.yaml
+
+on:
+  workflow_call:
+    inputs:
+      ## Base Operating System Image
+      ## Options include:
+      ## - ubuntu-20.04
+      ## - ubuntu-22.04
+      base-os-image:
+        description: "Operating System Image:"
+        type: string
+        required: true
+
+      ## Upstream Github Action Runner Version
+      runner-version:
+        description: "Runner Version:"
+        type: string
+        required: true
+
+      ## Upstream Github Action Runner Container Hooks Version
+      runner-container-hooks-version:
+        description: "Container Hooks Version:"
+        type: string
+        required: false
+        default: "0.6.1"
+
+      ## Upstream Docker Version
+      docker-version:
+        description: "Docker Version:"
+        type: string
+        required: false
+        default: "24.0.9"
+
+      ## Linux Architectures for Multi-Arch Builds
+      platforms:
+        description: "Platforms:"
+        type: string
+        required: false
+        default: "linux/amd64,linux/arm64"
+
+      build-default-image:
+        description: "Build Default Image"
+        type: boolean
+        required: false
+        default: true
+
+      build-dind-image:
+        description: "Build DinD Image"
+        type: boolean
+        required: false
+        default: false
+
+      build-dind-rootless-image:
+        description: "Build DinD Rootless Image"
+        type: boolean
+        required: false
+        default: false
+
+      dry-run-enabled:
+        description: "Perform Dry Run"
+        type: boolean
+        required: false
+        default: false
+
+      custom-job-label:
+        description: "Custom Job Label:"
+        type: string
+        required: false
+        default: "Build"
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  OS_IMAGE: ${{ inputs.base-os-image }}
+  RUNNER_VERSION: ${{ inputs.runner-version }}
+  RUNNER_CONTAINER_HOOKS_VERSION: ${{ inputs.runner-container-hooks-version }}
+  DOCKER_VERSION: ${{ inputs.docker-version }}
+  PLATFORMS: ${{ inputs.platforms }}
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  build-legacy-images:
+    name: ${{ inputs.custom-job-label || 'Build' }}
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Install Make
+        run: |
+          if ! command -v make >/dev/null 2>&1; then
+            echo "::group::Updating APT Repository Indices"
+              sudo apt update
+            echo "::endgroup::"
+            echo "::group::Installing Make"
+              sudo apt install -y make
+            echo "::endgroup::"
+          fi
+
+      - name: Setup QEmu Support
+        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+
+      - name: Setup Docker Buildx Support
+        uses: docker/setup-buildx-action@aa33708b10e362ff993539393ff100fa93ed6a27 # v3.5.0
+        with:
+          version: v0.16.1
+          driver-opts: network=host
+
+      - name: Show Docker Version
+        run: docker version
+
+      - name: Show Docker Info
+        run: docker info
+
+      - name: Docker Login (Github)
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        if: ${{ inputs.dry-run-enabled != true }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate Docker Registry
+        id: registry
+        run: |
+          DOCKER_REGISTRY_PREFIX="ghcr.io/${{ github.repository }}"
+          IMG_RESULT="push"
+          
+          if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
+            DOCKER_REGISTRY_PREFIX="local"
+            IMG_RESULT="load"
+          fi
+          
+          echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
+          echo "operation=${IMG_RESULT}" >>"${GITHUB_OUTPUT}"
+
+      - name: Build Default Image
+        env:
+          DOCKER_USER: ${{ steps.registry.outputs.prefix }}
+          IMG_RESULT: ${{ steps.registry.outputs.operation }}
+        working-directory: legacy/runner
+        if: ${{ inputs.build-default-image }}
+        run: make docker-buildx-default
+
+      - name: Build DinD Image
+        env:
+          DOCKER_USER: ${{ steps.registry.outputs.prefix }}
+          IMG_RESULT: ${{ steps.registry.outputs.operation }}
+        working-directory: legacy/runner
+        if: ${{ inputs.build-dind-image }}
+        run: make docker-buildx-dind
+
+      - name: Build DinD Rootless Image
+        env:
+          DOCKER_USER: ${{ steps.registry.outputs.prefix }}
+          IMG_RESULT: ${{ steps.registry.outputs.operation }}
+        working-directory: legacy/runner
+        if: ${{ inputs.build-dind-rootless-image }}
+        run: make docker-buildx-dind-rootless

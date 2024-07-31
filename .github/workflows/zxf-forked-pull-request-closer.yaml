@@ -1,0 +1,60 @@
+##
+# Copyright (C) 2024 Hedera Hashgraph, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##
+
+name: "ZXF: Forked PR Closer"
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  close-pull-request:
+    name: Close Forked Pull Request
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    if: ${{ github.event.pull_request.head.repo.fork && github.actor != 'dependabot[bot]' }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Install GH CLI
+        uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authorize GH CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Close Pull Request
+        run: |
+          gh pr close ${{ github.event.pull_request.number }} \
+            --delete-branch \
+            --comment "This pull request was opened from a forked repository and has been closed in accordance with the repository security policies."
