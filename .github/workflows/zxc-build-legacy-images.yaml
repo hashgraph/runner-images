@@ -108,11 +108,6 @@ jobs:
   build-legacy-images:
     name: ${{ inputs.custom-job-label || 'Build' }}
     runs-on: [self-hosted, Linux, medium, ephemeral]
-    services: 
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
@@ -160,16 +155,20 @@ jobs:
         id: registry
         run: |
           DOCKER_REGISTRY_PREFIX="ghcr.io/${{ github.repository }}"
+          IMG_RESULT="push"
           
           if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
-            DOCKER_REGISTRY_PREFIX="localhost:5000"
+            DOCKER_REGISTRY_PREFIX="local"
+            IMG_RESULT="load"
           fi
           
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
+          echo "operation=${IMG_RESULT}" >>"${GITHUB_OUTPUT}"
 
       - name: Build Default Image
         env:
           DOCKER_USER: ${{ steps.registry.outputs.prefix }}
+          IMG_RESULT: ${{ steps.registry.outputs.operation }}
         working-directory: legacy/runner
         if: ${{ inputs.build-default-image }}
         run: make docker-buildx-default
@@ -177,6 +176,7 @@ jobs:
       - name: Build DinD Image
         env:
           DOCKER_USER: ${{ steps.registry.outputs.prefix }}
+          IMG_RESULT: ${{ steps.registry.outputs.operation }}
         working-directory: legacy/runner
         if: ${{ inputs.build-dind-image }}
         run: make docker-buildx-dind
@@ -184,6 +184,7 @@ jobs:
       - name: Build DinD Rootless Image
         env:
           DOCKER_USER: ${{ steps.registry.outputs.prefix }}
+          IMG_RESULT: ${{ steps.registry.outputs.operation }}
         working-directory: legacy/runner
         if: ${{ inputs.build-dind-rootless-image }}
         run: make docker-buildx-dind-rootless
