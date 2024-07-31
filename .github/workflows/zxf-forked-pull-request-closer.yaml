@@ -50,6 +50,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Authorize GH CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
       - name: Close Pull Request
         run: |
           gh pr close ${{ github.event.pull_request.number }} \
