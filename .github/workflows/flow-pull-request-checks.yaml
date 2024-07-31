@@ -32,7 +32,7 @@ concurrency:
 
 jobs:
   versions:
-    name: Retrieve Upstream Versions
+    name: Upstream Versions
     uses: ./.github/workflows/zxc-retrieve-upstream-versions.yaml
 
   legacy-images:
