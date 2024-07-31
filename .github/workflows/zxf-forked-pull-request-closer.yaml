@@ -28,6 +28,7 @@ defaults:
     shell: bash
 
 permissions:
+  id-token: write
   pull-requests: write
   contents: read
 
