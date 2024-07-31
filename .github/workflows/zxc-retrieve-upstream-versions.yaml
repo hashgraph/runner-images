@@ -1,0 +1,99 @@
+##
+# Copyright (C) 2024 Hedera Hashgraph, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##
+
+name: "ZXC: Retrieve Upstream Versions"
+# This reusable component is called by the following workflows:
+# - .github/workflows/flow-pull-request-checks.yaml
+# - .github/workflows/flow-build-application.yaml
+
+on:
+  workflow_call:
+    inputs:
+      custom-job-label:
+        description: "Custom Job Label"
+        type: string
+        required: false
+        default: "Standard"
+    outputs:
+      runner:
+        description: "Runner Version"
+        value: ${{ jobs.versions.outputs.runner-version }}
+      hooks:
+        description: "Container Hooks Version"
+        value: ${{ jobs.versions.outputs.hooks-version }}
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    name: ${{ inputs.custom-job-label || 'Standard' }}
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    outputs:
+      runner-version: ${{ steps.runner.outputs.version }}
+      hooks-version: ${{ steps.hooks.outputs.version }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Install GH CLI
+        uses: actions4gh/setup-gh@44a12005484c53be5bf51bebe8c985b4be8ba8de # v1.0.2
+
+      - name: Install JQ CLI
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            echo "::group::Updating APT Repository Indices"
+              sudo apt update
+            echo "::endgroup::"
+            echo "::group::Installing JQ CLI"
+              sudo apt install -y jq
+            echo "::endgroup::"
+          fi
+
+      - name: Install SemVer CLI
+        run: |
+          echo "::group::Download SemVer Binary"
+            sudo curl -L -o /usr/local/bin/semver https://raw.githubusercontent.com/fsaintjacques/semver-tool/master/src/semver
+          echo "::endgroup::"
+          echo "::group::Change SemVer Binary Permissions"
+            sudo chmod -v +x /usr/local/bin/semver
+          echo "::endgroup::"
+          echo "::group::Show SemVer Binary Version Info"
+            semver --version
+          echo "::endgroup::"
+
+      - name: Retrieve Runner Version
+        id: runner
+        run: |
+          LATEST_TAG="$(gh release view -R actions/runner --json tagName | jq -r '.tagName')"
+          VERSION="$(semver get release ${LATEST_TAG})"
+          echo "::set-output name=version::${VERSION}"
+
+      - name: Retrieve Runner Container Hooks Version
+        id: hooks
+        run: |
+          LATEST_TAG="$(gh release view -R actions/runner-container-hooks --json tagName | jq -r '.tagName')"
+          VERSION="$(semver get release ${LATEST_TAG})"
+          echo "::set-output name=version::${VERSION}"
