@@ -252,3 +252,12 @@ jobs:
         working-directory: legacy/runner
         if: ${{ inputs.build-dind-rootless-image }}
         run: make docker-buildx-dind-rootless
+
+      - name: Show Docker Containers
+        if: ${{ failure() && inputs.dry-run-enabled == true }}
+        run: docker ps -a
+
+      - name: Show Local Container Registry Logs
+        if: ${{ failure() && inputs.dry-run-enabled == true }}
+        run: docker logs registry
+        
