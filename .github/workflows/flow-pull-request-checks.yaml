@@ -44,7 +44,7 @@ jobs:
     with:
       build-default-image: true
       build-dind-image: true
-      build-dind-rootless-image: true
+      build-dind-rootless-image: false
       base-os-image: ubuntu-22.04
       runner-version: ${{ needs.versions.outputs.runner }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
