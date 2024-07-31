@@ -26,7 +26,7 @@ on:
         description: "Custom Job Label"
         type: string
         required: false
-        default: "Standard"
+        default: "Check"
     outputs:
       runner:
         description: "Runner Version"
@@ -44,7 +44,7 @@ permissions:
 
 jobs:
   versions:
-    name: ${{ inputs.custom-job-label || 'Standard' }}
+    name: ${{ inputs.custom-job-label || 'Check' }}
     runs-on: [self-hosted, Linux, medium, ephemeral]
     outputs:
       runner-version: ${{ steps.runner.outputs.version }}
