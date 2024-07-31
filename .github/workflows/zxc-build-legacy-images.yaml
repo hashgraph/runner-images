@@ -211,7 +211,7 @@ jobs:
 
       - name: Setup Local Container Registry
         if: ${{ inputs.dry-run-enabled == true }}
-        run: docker run -d --network host --name registry registry:latest
+        run: docker run -d -p 5000:5000 --restart=always --name registry registry:latest
 
       - name: Show Docker Containers
         if: ${{ inputs.dry-run-enabled == true }}
@@ -224,10 +224,10 @@ jobs:
       - name: Calculate Docker Registry
         id: registry
         run: |
-          DOCKER_REGISTRY_PREFIX="ghcr.io/${{ github.repository_owner }}"
+          DOCKER_REGISTRY_PREFIX="ghcr.io/${{ github.repository }}"
           
           if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
-            DOCKER_REGISTRY_PREFIX="localhost:5000/${{ github.repository_owner }}"
+            DOCKER_REGISTRY_PREFIX="localhost:5000"
           fi
           
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
@@ -260,4 +260,3 @@ jobs:
       - name: Show Local Container Registry Logs
         if: ${{ failure() && inputs.dry-run-enabled == true }}
         run: docker logs registry
-        
