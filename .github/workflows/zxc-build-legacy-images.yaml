@@ -118,7 +118,26 @@ jobs:
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Install KillAll
-        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends psmisc
+        run: |
+          if ! command -v killall >/dev/null 2>&1; then
+            echo "::group::Updating APT Repository Indices"
+              sudo apt update
+            echo "::endgroup::"
+            echo "::group::Installing KillAll"
+              sudo apt install -y psmisc
+            echo "::endgroup::"
+          fi
+
+      - name: Install Make
+        run: |
+          if ! command -v make >/dev/null 2>&1; then
+            echo "::group::Updating APT Repository Indices"
+              sudo apt update
+            echo "::endgroup::"
+            echo "::group::Installing Make"
+              sudo apt install -y make
+            echo "::endgroup::"
+          fi
 
       - name: Create Docker Working Directory
         run: |
