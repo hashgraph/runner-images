@@ -28,9 +28,8 @@ defaults:
     shell: bash
 
 permissions:
-  id-token: write
   pull-requests: write
-  contents: write
+  contents: read
 
 jobs:
   close-pull-request:
@@ -47,7 +46,9 @@ jobs:
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Install GH CLI
-        uses: actions4gh/setup-gh@44a12005484c53be5bf51bebe8c985b4be8ba8de # v1.0.2
+        uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Close Pull Request
         run: |
