@@ -22,6 +22,16 @@ name: "ZXC: Retrieve Upstream Versions"
 on:
   workflow_call:
     inputs:
+      explicit-runner-version:
+        description: "Runner Version:"
+        type: string
+        required: false
+        default: ""
+      explicit-hooks-version:
+        description: "Container Hooks Version:"
+        type: string
+        required: false
+        default: ""
       custom-job-label:
         description: "Custom Job Label"
         type: string
@@ -89,16 +99,34 @@ jobs:
             semver --version
           echo "::endgroup::"
 
+      - name: Validate Explicit Runner Version
+        id: explicit-runner
+        if: ${{ inputs.explicit-runner-version != '' }}
+        run: |
+          VERSION="$(semver get release "${{ inputs.explicit-runner-version }}")"
+          echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
+
       - name: Retrieve Runner Version
         id: runner
         run: |
-          LATEST_TAG="$(gh release view -R actions/runner --json tagName | jq -r '.tagName')"
+          TARGET_TAG="v${{ steps.explicit-runner.outputs.version || '' }}"
+          [[ "${TARGET_TAG}" == "v" ]] && TARGET_TAG=""
+          LATEST_TAG="$(gh release view ${TARGET_TAG} -R actions/runner --json tagName | jq -r '.tagName')"
           VERSION="$(semver get release ${LATEST_TAG})"
+          echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
+
+      - name: Validate Explicit Hooks Version
+        id: explicit-hooks
+        if: ${{ inputs.explicit-hooks-version != '' }}
+        run: |
+          VERSION="$(semver get release "${{ inputs.explicit-hooks-version }}")"
           echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
 
       - name: Retrieve Runner Container Hooks Version
         id: hooks
         run: |
-          LATEST_TAG="$(gh release view -R actions/runner-container-hooks --json tagName | jq -r '.tagName')"
+          TARGET_TAG="v${{ steps.explicit-hooks.outputs.version || '' }}"
+          [[ "${TARGET_TAG}" == "v" ]] && TARGET_TAG=""
+          LATEST_TAG="$(gh release view ${TARGET_TAG} -R actions/runner-container-hooks --json tagName | jq -r '.tagName')"
           VERSION="$(semver get release ${LATEST_TAG})"
           echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"

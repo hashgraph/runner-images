@@ -1,0 +1,229 @@
+##
+# Copyright (C) 2024 Hedera Hashgraph, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##
+
+name: "Release Legacy Images"
+on:
+  workflow_dispatch:
+    inputs:
+      runner-version:
+        description: "Runner Version:"
+        type: string
+        required: true
+
+      ## Upstream Github Action Runner Container Hooks Version
+      runner-container-hooks-version:
+        description: "Container Hooks Version:"
+        type: string
+        required: false
+        default: "0.6.1"
+
+      ## Upstream Docker Version
+      docker-version:
+        description: "Docker Version:"
+        type: string
+        required: false
+        default: "24.0.9"
+
+      ## Linux Architectures for Multi-Arch Builds
+      platforms:
+        description: "Platforms:"
+        type: string
+        required: false
+        default: "linux/amd64,linux/arm64"
+
+      build-default-image:
+        description: "Build Default Image"
+        type: boolean
+        required: false
+        default: true
+
+      build-dind-image:
+        description: "Build DinD Image"
+        type: boolean
+        required: false
+        default: true
+
+      build-dind-rootless-image:
+        description: "Build DinD Rootless Image"
+        type: boolean
+        required: false
+        default: false
+
+      dry-run-enabled:
+        description: "Perform Dry Run"
+        type: boolean
+        required: false
+        default: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  versions:
+    name: Upstream Versions
+    uses: ./.github/workflows/zxc-retrieve-upstream-versions.yaml
+    with:
+      explicit-runner-version: ${{ github.event.inputs.runner-version }}
+      explicit-hooks-version: ${{ github.event.inputs.runner-container-hooks-version }}
+
+  safety-checks:
+    name: Safety Checks
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    needs:
+      - versions
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Install GH CLI
+        uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authorize GH CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Check for Existing Releases
+        run: |
+          if gh release view v${{ needs.versions.outputs.runner }} >/dev/null 2>&1; then
+            echo "::error title=Release Version::Release v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
+            exit 1
+          fi
+
+  legacy-image:
+    name: Legacy Image
+    uses: ./.github/workflows/zxc-build-legacy-images.yaml
+    needs:
+      - versions
+      - safety-checks
+    strategy:
+      matrix:
+        base-os-image:
+          - ubuntu-22.04
+          - ubuntu-20.04
+    with:
+      custom-job-label: "Release"
+      base-os-image: ${{ matrix.base-os-image }}
+      runner-version: ${{ needs.versions.outputs.runner }}
+      runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
+      docker-version: ${{ github.event.inputs.docker-version || '24.0.9' }}
+      platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64' }}
+      build-default-image: ${{ github.event.inputs.build-default-image == 'true' }}
+      build-dind-image: ${{ github.event.inputs.build-dind-image == 'true' }}
+      build-dind-rootless-image: ${{ github.event.inputs.build-dind-rootless-image == 'true' }}
+      dry-run-enabled: ${{ github.event.inputs.dry-run-enabled == 'true' || github.ref_name != 'main' }}
+
+  update-version:
+    name: Update Version
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    needs:
+      - versions
+      - legacy-image
+    if: ${{ github.event.inputs.dry-run-enabled != 'true' && github.ref_name == 'main' }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      - name: Import GPG key
+        id: gpg_key
+        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4 # v6.1.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_KEY_CONTENTS }}
+          passphrase: ${{ secrets.GPG_KEY_PASSPHRASE }}
+          git_config_global: true
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: false
+
+      - name: Update Version Descriptor
+        working-directory: legacy/runner
+        run: printf "RUNNER_VERSION=%s\nRUNNER_CONTAINER_HOOKS_VERSION=%s\n" "${{ needs.versions.outputs.runner }}" "${{ needs.versions.outputs.hooks }}" >VERSION
+
+      - name: Commit Changes
+        uses: actions-js/push@5a7cbd780d82c0c937b5977586e641b2fd94acc5 # v1.5
+        with:
+          github_token: ${{ secrets.GH_ACCESS_TOKEN }}
+          author_name: ${{ vars.GIT_USER_NAME }}
+          author_email: ${{ vars.GIT_USER_EMAIL }}
+          message: "chore(release): v${{ needs.versions.outputs.runner }} [skip ci]"
+
+  finalize-release:
+    name: Finalize Release
+    runs-on: [self-hosted, Linux, medium, ephemeral]
+    needs:
+      - versions
+      - update-version
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0d381219ddf674d61a7572ddd19d7941e271515c # v2.9.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      - name: Import GPG key
+        id: gpg_key
+        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4 # v6.1.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_KEY_CONTENTS }}
+          passphrase: ${{ secrets.GPG_KEY_PASSPHRASE }}
+          git_config_global: true
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: Install GH CLI
+        uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authorize GH CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Fetch Upstream Release Info
+        run: |
+          RELEASE_URL="$(gh release view v${{ needs.versions.outputs.runner }} --json url -R actions/runner | jq -r '.url')"
+          gh release view v${{ needs.versions.outputs.runner }} --json body -R actions/runner | jq -r '.body' > .github/RELEASE_BODY.md
+          printf "\n\n### _Release Notes have been imported from the [%s](%s) release in the upstream repository._\n\n" "v${{ needs.versions.outputs.runner }}" "${RELEASE_URL}" >> .github/RELEASE_BODY.md
+
+      - name: Create Release
+        uses: ncipollo/release-action@2c591bcc8ecdcd2db72b97d6147f871fcd833ba5 # v1.14.0
+        with:
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          commit: ${{ github.ref_name }}
+          tag: v${{ needs.versions.outputs.runner }}
+          bodyFile: .github/RELEASE_BODY.md
