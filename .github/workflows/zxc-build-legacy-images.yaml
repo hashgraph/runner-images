@@ -211,7 +211,7 @@ jobs:
 
       - name: Setup Local Container Registry
         if: ${{ inputs.dry-run-enabled == true }}
-        run: docker run --rm -d -p 5000:5000 --name registry registry:latest
+        run: docker run --rm -d --network host --name registry registry:latest
 
       - name: Calculate Docker Registry
         id: registry
