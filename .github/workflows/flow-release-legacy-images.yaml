@@ -35,7 +35,7 @@ on:
         description: "Docker Version:"
         type: string
         required: false
-        default: "24.0.9"
+        default: "25.0.5"
 
       ## Linux Architectures for Multi-Arch Builds
       platforms:
@@ -127,7 +127,7 @@ jobs:
       base-os-image: ${{ matrix.base-os-image }}
       runner-version: ${{ needs.versions.outputs.runner }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
-      docker-version: ${{ github.event.inputs.docker-version || '24.0.9' }}
+      docker-version: ${{ github.event.inputs.docker-version || '25.0.5' }}
       platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64' }}
       build-default-image: ${{ github.event.inputs.build-default-image == 'true' }}
       build-dind-image: ${{ github.event.inputs.build-dind-image == 'true' }}
