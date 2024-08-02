@@ -104,6 +104,32 @@ COPY docker-shim.sh /usr/local/bin/docker
 # Configure hooks folder structure.
 COPY hooks /etc/arc/hooks/
 
+#########################################
+## Begin Tool Cache Customization      ##
+#########################################
+COPY --link --chown=${RUNNER_UID}:${DOCKER_GID} tools ${RUNNER_TOOL_CACHE}
+#########################################
+## End Tool Cache Customization        ##
+#########################################
+
+#########################################
+## Begin OS Software Customizations    ##
+#########################################
+RUN apt-get install -y --no-install-recommends \
+    make \
+    wget \
+    gnupg2 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fL https://install-cli.jfrog.io | sh \
+    && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin \
+    && curl -L -o /usr/local/bin/semver https://raw.githubusercontent.com/fsaintjacques/semver-tool/master/src/semver \
+    && chmod +x /usr/local/bin/semver
+#########################################
+## End OS Software Customizations      ##
+#########################################
+
 VOLUME /var/lib/docker
 
 # Add the Python "User Script Directory" to the PATH
