@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set +e
+set -o pipefail
+
+if [[ -z "${RUNNER_JF_SERVER_URL}"  ]]; then
+  log.info "Skipping JFrog authorization as RUNNER_JF_URL is not set."
+  exit 0
+fi
+
+if [[ -z "${RUNNER_JF_USER_NAME}" ]]; then
+  log.info "Skipping JFrog authorization as RUNNER_JF_USER_NAME is not set."
+  exit 0
+fi
+
+if [[ -z "${RUNNER_JF_ACCESS_TOKEN}" ]]; then
+  log.info "Skipping JFrog authorization as RUNNER_JF_ACCESS_TOKEN is not set."
+  exit 0
+fi
+
+if ! command -v jf >/dev/null 2>&1; then
+  log.error "jfrog CLI is not installed. Please install it from https://jfrog.com/getcli/"
+  exit 1
+fi
+
+log.debug "Authorizing JFrog CLI with server URL: ${RUNNER_JF_SERVER_URL}"
+echo "${RUNNER_JF_ACCESS_TOKEN}" | jf config add runner-jf --interactive=false --url="${RUNNER_JF_SERVER_URL}" --user="${RUNNER_JF_USER_NAME}" --access-token-stdin
+EC="${?}"
+
+if [[ "${EC}" -ne 0 ]]; then
+  log.error "Failed to authorize JFrog CLI with server URL: ${RUNNER_JF_SERVER_URL}"
+  exit "${EC}"
+fi
+
+log.info "Successfully authorized JFrog CLI with server URL: ${RUNNER_JF_SERVER_URL}"
+
+if [[ -z "${DOCKER_REGISTRY_HOSTNAME}" ]]; then
+  log.info "Skipping Docker registry authorization as DOCKER_REGISTRY_HOSTNAME is not set."
+  exit 0
+fi
+
+log.debug "Authorizing Docker registry: ${DOCKER_REGISTRY_HOSTNAME}"
+echo "${RUNNER_JF_ACCESS_TOKEN}" | docker login --username="${RUNNER_JF_USER_NAME}" --password-stdin "${DOCKER_REGISTRY_HOSTNAME}"
+EC="${?}"
+
+if [[ "${EC}" -ne 0 ]]; then
+  log.error "Failed to authorize Docker registry: ${DOCKER_REGISTRY_HOSTNAME}"
+  exit "${EC}"
+fi
+
+log.info "Successfully authorized Docker registry: ${DOCKER_REGISTRY_HOSTNAME}"
