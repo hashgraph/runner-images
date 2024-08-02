@@ -182,7 +182,7 @@ jobs:
       - name: Upload Tool Cache
         uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
         with:
-          name: Tools
+          name: "Tools (${{ inputs.base-os-image }})"
           retention-days: 1
           path: ${{ runner.tool_cache }}/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
 
@@ -203,7 +203,7 @@ jobs:
       - name: Download Tool Cache
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          name: Tools
+          name: "Tools (${{ inputs.base-os-image }})"
           path: ${{ github.workspace }}/legacy/runner/tools
 
       - name: Unpack Tool Cache
