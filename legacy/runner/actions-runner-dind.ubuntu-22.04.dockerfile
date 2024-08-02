@@ -127,6 +127,13 @@ RUN curl -fL https://install-cli.jfrog.io | sh \
     && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin \
     && curl -L -o /usr/local/bin/semver https://raw.githubusercontent.com/fsaintjacques/semver-tool/master/src/semver \
     && chmod +x /usr/local/bin/semver
+
+ARG GH_CLI_VERSION=2.54.0
+RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
+    && if [ "$ARCH" = "i386" ]; then export ARCH=386 ; fi \
+    && curl -sL https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz \
+        | tar -xz --strip-components=2 -C /usr/local/bin "*/bin/gh" \
+    && chmod +x /usr/local/bin/gh
 #########################################
 ## End OS Software Customizations      ##
 #########################################
