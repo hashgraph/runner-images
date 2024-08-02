@@ -98,6 +98,40 @@ COPY docker-shim.sh /usr/local/bin/docker
 # Configure hooks folder structure.
 COPY hooks /etc/arc/hooks/
 
+#########################################
+## Begin Tool Cache Customization      ##
+#########################################
+COPY --link --chown=1000:1001 tools /opt/hostedtoolcache
+#########################################
+## End Tool Cache Customization        ##
+#########################################
+
+#########################################
+## Begin OS Software Customizations    ##
+#########################################
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+    make \
+    wget \
+    gnupg2 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fL https://install-cli.jfrog.io | sh \
+    && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin \
+    && curl -L -o /usr/local/bin/semver https://raw.githubusercontent.com/fsaintjacques/semver-tool/master/src/semver \
+    && chmod +x /usr/local/bin/semver
+
+ARG GH_CLI_VERSION=2.54.0
+RUN export ARCH=$(echo ${TARGETPLATFORM} | cut -d / -f2) \
+    && if [ "$ARCH" = "i386" ]; then export ARCH=386 ; fi \
+    && curl -sL https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz \
+        | tar -xz --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
+    && chmod +x /usr/local/bin/gh
+#########################################
+## End OS Software Customizations      ##
+#########################################
+
 # Add the Python "User Script Directory" to the PATH
 ENV PATH="${PATH}:${HOME}/.local/bin:/home/runner/bin"
 ENV ImageOS=ubuntu22
