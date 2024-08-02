@@ -104,7 +104,7 @@ COPY hooks /etc/arc/hooks/
 #########################################
 ## Begin Tool Cache Customization      ##
 #########################################
-COPY --link --chown=${RUNNER_UID}:${DOCKER_GID} tools ${RUNNER_TOOL_CACHE}
+COPY --link --chown=1000:1001 tools /opt/hostedtoolcache
 #########################################
 ## End Tool Cache Customization        ##
 #########################################
@@ -112,7 +112,8 @@ COPY --link --chown=${RUNNER_UID}:${DOCKER_GID} tools ${RUNNER_TOOL_CACHE}
 #########################################
 ## Begin OS Software Customizations    ##
 #########################################
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
     make \
     wget \
     gnupg2 \
