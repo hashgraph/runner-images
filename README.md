@@ -3,6 +3,8 @@
 This repository contains customized versions of the [Actions Runner Controller](https://github.com/actions/actions-runner-controller)
 container images along with customized build process to automatically build and publish them to the GitHub Container Registry.
 
+Naughty fork changes!
+
 ## :warning: Restrictions on Contributions
 
 Contributions from forked repositories are not accepted. All pull requests initiated from a forked repository will be 
