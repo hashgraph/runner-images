@@ -96,6 +96,9 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
       - name: Install GH CLI
         uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
         with:
@@ -106,7 +109,7 @@ jobs:
 
       - name: Check for Existing Releases
         run: |
-          if gh release view v${{ needs.versions.outputs.runner }} >/dev/null 2>&1; then
+          if gh release view v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
             echo "::error title=Release Version::Release v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
             exit 1
           fi
