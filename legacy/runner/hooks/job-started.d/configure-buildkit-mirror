@@ -8,7 +8,7 @@ source /usr/bin/logger.sh
 readonly BUILDKIT_MIRROR_CONFIG_FILE="/etc/docker/buildkitd.toml"
 
 if [[ -z "${DOCKER_REGISTRY_MIRROR}"  ]]; then
-  log.info "Skipping BuildKit mirror configuration as DOCKER_REGISTRY_MIRROR is not set."
+  log.notice "Skipping BuildKit mirror configuration as DOCKER_REGISTRY_MIRROR is not set."
   exit 0
 fi
 
@@ -35,4 +35,4 @@ if [[ "${EC}" -ne 0 ]]; then
   exit "${EC}"
 fi
 
-log.info "Successfully configured BuildKit with docker registry mirror: ${DOCKER_REGISTRY_HOSTNAME}"
+log.notice "Successfully configured BuildKit with docker registry mirror: ${DOCKER_REGISTRY_HOSTNAME}"

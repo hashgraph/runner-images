@@ -6,17 +6,17 @@ set -o pipefail
 source /usr/bin/logger.sh
 
 if [[ -z "${RUNNER_JF_SERVER_URL}"  ]]; then
-  log.info "Skipping JFrog authorization as RUNNER_JF_URL is not set."
+  log.notice "Skipping JFrog authorization as RUNNER_JF_URL is not set."
   exit 0
 fi
 
 if [[ -z "${RUNNER_JF_USER_NAME}" ]]; then
-  log.info "Skipping JFrog authorization as RUNNER_JF_USER_NAME is not set."
+  log.notice "Skipping JFrog authorization as RUNNER_JF_USER_NAME is not set."
   exit 0
 fi
 
 if [[ -z "${RUNNER_JF_ACCESS_TOKEN}" ]]; then
-  log.info "Skipping JFrog authorization as RUNNER_JF_ACCESS_TOKEN is not set."
+  log.notice "Skipping JFrog authorization as RUNNER_JF_ACCESS_TOKEN is not set."
   exit 0
 fi
 
@@ -34,10 +34,10 @@ if [[ "${EC}" -ne 0 ]]; then
   exit "${EC}"
 fi
 
-log.info "Successfully authorized JFrog CLI with server URL: ${RUNNER_JF_SERVER_URL}"
+log.notice "Successfully authorized JFrog CLI with server URL: ${RUNNER_JF_SERVER_URL}"
 
 if [[ -z "${DOCKER_REGISTRY_HOSTNAME}" ]]; then
-  log.info "Skipping Docker registry authorization as DOCKER_REGISTRY_HOSTNAME is not set."
+  log.notice "Skipping Docker registry authorization as DOCKER_REGISTRY_HOSTNAME is not set."
   exit 0
 fi
 
@@ -50,4 +50,4 @@ if [[ "${EC}" -ne 0 ]]; then
   exit "${EC}"
 fi
 
-log.info "Successfully authorized Docker registry: ${DOCKER_REGISTRY_HOSTNAME}"
+log.notice "Successfully authorized Docker registry: ${DOCKER_REGISTRY_HOSTNAME}"
