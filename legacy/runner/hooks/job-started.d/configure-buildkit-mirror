@@ -3,7 +3,7 @@ set +e
 set -o pipefail
 
 # shellcheck source=../../logger.sh
-source logger.sh
+source /usr/bin/logger.sh
 
 readonly BUILDKIT_MIRROR_CONFIG_FILE="/etc/docker/buildkitd.toml"
 

@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 if [[ ${1:-} == '' ]]; then
-  # shellcheck source=runner/logger.sh
+  # shellcheck source=logger.sh
   source logger.sh
   log.error "Missing required argument -- '<phase>'"
   exit 64
@@ -37,7 +37,7 @@ if [[ ${RUNNER_STATUS_UPDATE_HOOK:-false} == true ]]; then
      | .status.workflow.job = $workflow_job
      | .status.workflow.action = $workflow_action
       ')
-      
+
     echo "$data" | curl \
         --cacert ${serviceaccount}/ca.crt \
         --data @- \

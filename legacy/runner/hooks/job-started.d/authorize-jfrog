@@ -3,7 +3,7 @@ set +e
 set -o pipefail
 
 # shellcheck source=../../logger.sh
-source logger.sh
+source /usr/bin/logger.sh
 
 if [[ -z "${RUNNER_JF_SERVER_URL}"  ]]; then
   log.info "Skipping JFrog authorization as RUNNER_JF_URL is not set."
