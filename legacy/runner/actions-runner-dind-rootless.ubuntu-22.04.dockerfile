@@ -114,6 +114,7 @@ RUN apt-get update -y \
     make \
     wget \
     gnupg2 \
+    tree \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set +e
+set -o pipefail
+
+# shellcheck source=../../logger.sh
+source logger.sh
+
+readonly BUILDKIT_MIRROR_CONFIG_FILE="/etc/docker/buildkitd.toml"
+
+if [[ -z "${DOCKER_REGISTRY_MIRROR}"  ]]; then
+  log.info "Skipping BuildKit mirror configuration as DOCKER_REGISTRY_MIRROR is not set."
+  exit 0
+fi
+
+function render_config() {
+  local mirror="${1}"
+
+  [[ -z "${mirror}" ]] && return 1
+
+  cat <<EOF
+debug = true
+[registry."docker.io"]
+  mirrors = ["${mirror}"]
+EOF
+
+  return 0
+}
+
+log.debug "Writing BuildKit configuration file: ${BUILDKIT_MIRROR_CONFIG_FILE}"
+render_config "${DOCKER_REGISTRY_MIRROR}" | sudo tee "${BUILDKIT_MIRROR_CONFIG_FILE}" > /dev/null
+EC="${?}"
+
+if [[ "${EC}" -ne 0 ]]; then
+  log.error "Failed to write BuildKit configuration file: ${BUILDKIT_MIRROR_CONFIG_FILE}"
+  exit "${EC}"
+fi
+
+log.info "Successfully configured BuildKit with docker registry mirror: ${DOCKER_REGISTRY_HOSTNAME}"
