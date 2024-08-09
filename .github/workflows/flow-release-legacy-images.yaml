@@ -87,7 +87,7 @@ jobs:
 
   safety-checks:
     name: Safety Checks
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     needs:
       - versions
     steps:
@@ -139,7 +139,7 @@ jobs:
 
   update-version:
     name: Update Version
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     needs:
       - versions
       - legacy-image
@@ -181,7 +181,7 @@ jobs:
 
   finalize-release:
     name: Finalize Release
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     needs:
       - versions
       - update-version

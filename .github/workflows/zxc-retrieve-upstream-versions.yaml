@@ -55,7 +55,7 @@ permissions:
 jobs:
   versions:
     name: ${{ inputs.custom-job-label || 'Check' }}
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     outputs:
       runner-version: ${{ steps.runner.outputs.version }}
       hooks-version: ${{ steps.hooks.outputs.version }}

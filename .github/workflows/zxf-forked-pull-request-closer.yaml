@@ -34,7 +34,7 @@ permissions:
 jobs:
   close-pull-request:
     name: Close Forked Pull Request
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     if: ${{ github.event.pull_request.head.repo.fork && github.actor != 'dependabot[bot]' }}
     steps:
       - name: Harden Runner

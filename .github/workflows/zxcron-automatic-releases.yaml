@@ -35,7 +35,7 @@ jobs:
 
   safety-checks:
     name: Safety Checks
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     needs:
       - versions
     outputs:
@@ -70,7 +70,7 @@ jobs:
 
   legacy-release:
     name: Legacy Release
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     needs:
       - versions
       - safety-checks

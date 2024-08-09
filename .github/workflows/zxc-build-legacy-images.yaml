@@ -108,7 +108,7 @@ permissions:
 jobs:
   create-tool-cache:
     name: Create Tool Cache
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
@@ -188,7 +188,7 @@ jobs:
 
   build-legacy-images:
     name: ${{ inputs.custom-job-label || 'Build' }}
-#    runs-on: [self-hosted, Linux, medium, ephemeral]
+#    runs-on: ubuntu-22.04
     runs-on: ubuntu-22.04
     needs:
       - create-tool-cache

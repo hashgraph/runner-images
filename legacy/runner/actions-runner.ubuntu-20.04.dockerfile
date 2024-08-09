@@ -127,7 +127,7 @@ COPY hooks /etc/arc/hooks/
 #########################################
 ## Begin Tool Cache Customization      ##
 #########################################
-COPY --link --chown=1001:1001 tools /opt/hostedtoolcache
+COPY --chown=runner:docker --chmod=777 tools /opt/hostedtoolcache
 #########################################
 ## End Tool Cache Customization        ##
 #########################################
