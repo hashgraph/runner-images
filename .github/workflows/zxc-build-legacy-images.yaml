@@ -188,7 +188,8 @@ jobs:
 
   build-legacy-images:
     name: ${{ inputs.custom-job-label || 'Build' }}
-    runs-on: [self-hosted, Linux, medium, ephemeral]
+#    runs-on: [self-hosted, Linux, medium, ephemeral]
+    runs-on: ubuntu-22.04
     needs:
       - create-tool-cache
     steps:
