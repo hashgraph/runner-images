@@ -101,7 +101,7 @@ COPY hooks /etc/arc/hooks/
 #########################################
 ## Begin Tool Cache Customization      ##
 #########################################
-COPY --link --chown=1000:1001 tools /opt/hostedtoolcache
+COPY --link --chown=1001:1001 tools /opt/hostedtoolcache
 #########################################
 ## End Tool Cache Customization        ##
 #########################################
