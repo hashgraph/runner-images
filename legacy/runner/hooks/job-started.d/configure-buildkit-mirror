@@ -35,4 +35,4 @@ if [[ "${EC}" -ne 0 ]]; then
   exit "${EC}"
 fi
 
-log.notice "Successfully configured BuildKit with docker registry mirror: ${DOCKER_REGISTRY_HOSTNAME}"
+log.notice "Successfully configured BuildKit with docker registry mirror: ${DOCKER_REGISTRY_MIRROR}"
