@@ -51,3 +51,18 @@ jobs:
       docker-version: 24.0.9
       platforms: linux/amd64
       dry-run-enabled: true
+
+  scaleset-images:
+    name: ScaleSet Images
+    uses: ./.github/workflows/zxc-build-scaleset-images.yaml
+    needs:
+      - versions
+    with:
+      base-os-image: ubuntu-22.04
+      runner-version: ${{ needs.versions.outputs.runner }}
+      runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
+      docker-version: 25.0.5
+      docker-buildx-version: 0.16.2
+      gh-cli-version: 2.54.0
+      platforms: linux/amd64
+      dry-run-enabled: true

@@ -1,0 +1,264 @@
+##
+# Copyright (C) 2024 Hedera Hashgraph, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##
+
+name: "ZXC: Build ScaleSet Images"
+# This reusable component is called by the following workflows:
+# - .github/workflows/flow-pull-request-checks.yaml
+# - .github/workflows/flow-build-application.yaml
+
+on:
+  workflow_call:
+    inputs:
+      ## Base Operating System Image
+      ## Options include:
+      ## - ubuntu-22.04
+      base-os-image:
+        description: "Operating System Image:"
+        type: string
+        required: true
+
+      ## Upstream Github Action Runner Version
+      runner-version:
+        description: "Runner Version:"
+        type: string
+        required: true
+
+      ## Upstream Github Action Runner Container Hooks Version
+      runner-container-hooks-version:
+        description: "Container Hooks Version:"
+        type: string
+        required: false
+        default: "0.6.1"
+
+      ## Upstream Docker Version
+      docker-version:
+        description: "Docker Version:"
+        type: string
+        required: false
+        default: "25.0.5"
+
+      ## Upstream Docker Buildx Version
+      docker-buildx-version:
+        description: "Docker Buildx Version:"
+        type: string
+        required: false
+        default: "0.16.2"
+
+      # Upstream Github CLI Version
+      gh-cli-version:
+        description: "Github CLI Version:"
+        type: string
+        required: false
+        default: "2.54.0"
+
+      ## Linux Architectures for Multi-Arch Builds
+      platforms:
+        description: "Platforms:"
+        type: string
+        required: false
+        default: "linux/amd64"
+
+      dry-run-enabled:
+        description: "Perform Dry Run"
+        type: boolean
+        required: false
+        default: false
+
+      custom-job-label:
+        description: "Custom Job Label:"
+        type: string
+        required: false
+        default: "Build"
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TOOL_CACHE_ARTIFACT_NAME: "tool-cache.tar.gz"
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+jobs:
+  create-tool-cache:
+    name: Create Tool Cache
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Install WGet
+        run: sudo apt update && sudo apt install -y --no-install-recommends wget
+
+      - name: Clear Hosted Tool Cache
+        run: rm -rvf "${{ runner.tool_cache }}"/*
+
+      - name: Setup Python
+        uses: actions/setup-python@39cd14951b08e74b54015e9e001cdefcf80e669f # v5.1.1
+        with:
+          python-version: '3.10'
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@f0990588f1e5b5af6827153b93673613abdc6ec7 # v2.1.1
+
+      - name: Setup Java
+        uses: actions/setup-java@6a0805fcefea3d4657a47ac4c165951e33482018 # v4.2.2
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup NodeJS 16
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: 16
+
+      - name: Setup NodeJS 18
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: 18
+
+      - name: Setup NodeJS 20
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: 20
+
+      - name: Setup NodeJS 22
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
+          node-version: 22
+
+      - name: Setup Kind
+        uses: helm/kind-action@0025e74a8c7512023d06dc019c617aa3cf561fde # v1.10.0
+        with:
+          install_only: true
+
+      - name: Setup Helm v3.12.3
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
+        with:
+          version: "v3.12.3" # helm version
+
+      - name: Setup Helm Latest
+        uses: azure/setup-helm@fe7b79cd5ee1e45176fcad797de68ecaf3ca4814 # v4.2.0
+
+      - name: Setup QEmu Support
+        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+
+      - name: Setup Docker Buildx Support
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+        with:
+          version: v0.16.2
+          driver-opts: network=host
+
+      - name: Archive Tool Cache
+        working-directory: ${{ runner.tool_cache }}
+        run: tar -czf ${{ env.TOOL_CACHE_ARTIFACT_NAME }} *
+
+      - name: Upload Tool Cache
+        uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
+        with:
+          name: "ScaleSet Tools (${{ inputs.base-os-image }})"
+          retention-days: 1
+          path: ${{ runner.tool_cache }}/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
+
+  build-legacy-images:
+    name: ${{ inputs.custom-job-label || 'Build' }}
+    runs-on: ubuntu-22.04
+    needs:
+      - create-tool-cache
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Download Tool Cache
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: "ScaleSet Tools (${{ inputs.base-os-image }})"
+          path: ${{ github.workspace }}/scaleset/runner/tools
+
+      - name: Unpack Tool Cache
+        run: |
+          tar -xzf ${{ github.workspace }}/scaleset/runner/tools/${{ env.TOOL_CACHE_ARTIFACT_NAME }} -C ${{ github.workspace }}/scaleset/runner/tools/
+          rm -f ${{ github.workspace }}/scaleset/runner/tools/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
+
+      - name: Setup QEmu Support
+        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+
+      - name: Setup Docker Buildx Support
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
+        with:
+          version: v0.16.2
+          driver-opts: network=host
+
+      - name: Show Docker Version
+        run: docker version
+
+      - name: Show Docker Info
+        run: docker info
+
+      - name: Docker Login (Github)
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        if: ${{ inputs.dry-run-enabled != true }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate Docker Registry
+        id: registry
+        run: |
+          DOCKER_REGISTRY_PREFIX="ghcr.io/${{ github.repository }}"
+          IMG_RESULT="push"
+          
+          if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
+            DOCKER_REGISTRY_PREFIX="local"
+            IMG_RESULT="load"
+          fi
+          
+          echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
+          echo "operation=${IMG_RESULT}" >>"${GITHUB_OUTPUT}"
+
+      - name: Build Image
+        uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
+        with:
+          context: ${{ github.workspace }}/scaleset/runner
+          platforms: ${{ inputs.platforms }}
+          push: ${{ steps.registry.outputs.operation == 'push' }}
+          load: ${{ steps.registry.outputs.operation == 'load' }}
+          tags: |
+            ${{ steps.registry.outputs.prefix }}/scaleset-runner:${{ inputs.base-os-image }}
+            ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ inputs.runner-version }}-${{ inputs.base-os-image }}
+          build-args: |
+            TARGETOS=linux
+            TARGETARCH=amd64
+            RUNNER_VERSION=${{ inputs.runner-version }}
+            RUNNER_CONTAINER_HOOKS_VERSION=${{ inputs.runner-container-hooks-version }}
+            DOCKER_VERSION=${{ inputs.docker-version }}
+            BUILDX_VERSION=${{ inputs.docker-buildx-version }}
+            GH_CLI_VERSION=${{ inputs.gh-cli-version }}
+            
