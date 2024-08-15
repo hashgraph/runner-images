@@ -61,8 +61,8 @@ jobs:
         id: release
         run: |
           NEEDED="true"
-          if gh release view v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
-            echo "::info title=Release Version::Release v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
+          if gh release view legacy-v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
+            echo "::info title=Release Version::Release legacy-v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
             NEEDED="false"
           fi
           

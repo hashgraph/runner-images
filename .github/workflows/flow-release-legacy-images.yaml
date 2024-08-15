@@ -109,8 +109,8 @@ jobs:
 
       - name: Check for Existing Releases
         run: |
-          if gh release view v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
-            echo "::error title=Release Version::Release v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
+          if gh release view legacy-v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
+            echo "::error title=Release Version::Release legacy-v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
             exit 1
           fi
 
@@ -177,7 +177,7 @@ jobs:
           github_token: ${{ secrets.GH_ACCESS_TOKEN }}
           author_name: ${{ vars.GIT_USER_NAME }}
           author_email: ${{ vars.GIT_USER_EMAIL }}
-          message: "chore(release): v${{ needs.versions.outputs.runner }} [skip ci]"
+          message: "chore(release): legacy-v${{ needs.versions.outputs.runner }} [skip ci]"
 
   finalize-release:
     name: Finalize Release
@@ -228,5 +228,5 @@ jobs:
         with:
           token: ${{ secrets.GH_ACCESS_TOKEN }}
           commit: ${{ github.ref_name }}
-          tag: v${{ needs.versions.outputs.runner }}
+          tag: legacy-v${{ needs.versions.outputs.runner }}
           bodyFile: .github/RELEASE_BODY.md
