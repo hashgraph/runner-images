@@ -162,7 +162,7 @@ jobs:
           git_tag_gpgsign: false
 
       - name: Update Version Descriptor
-        working-directory: legacy/runner
+        working-directory: scaleset/runner
         run: printf "RUNNER_VERSION=%s\nRUNNER_CONTAINER_HOOKS_VERSION=%s\n" "${{ needs.versions.outputs.runner }}" "${{ needs.versions.outputs.hooks }}" >VERSION
 
       - name: Commit Changes
