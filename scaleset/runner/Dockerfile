@@ -85,6 +85,8 @@ RUN apt-get update -y \
     zip \
     gzip \
     jq \
+    python3-pip \
+    htop \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -100,6 +102,15 @@ RUN export ARCH=${TARGETARCH} \
     && curl -sL https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz \
         | tar -xz --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
     && chmod +x /usr/local/bin/gh
+
+ARG COMPOSE_VERSION=2.29.2
+RUN export RUNNER_ARCH=${TARGETARCH} \
+    && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
+    && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
+    && mkdir -p /usr/local/lib/docker/cli-plugins \
+    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
+        "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${RUNNER_ARCH}" \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 #########################################
 ## End OS Software Customizations      ##
 #########################################
