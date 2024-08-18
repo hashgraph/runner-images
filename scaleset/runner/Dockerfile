@@ -105,11 +105,11 @@ RUN export ARCH=${TARGETARCH} \
 
 ARG COMPOSE_VERSION=2.29.2
 RUN export RUNNER_ARCH=${TARGETARCH} \
-    && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
-    && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
+    && if [ "${RUNNER_ARCH}" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
+    && if [ "${RUNNER_ARCH}" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
-        "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${RUNNER_ARCH}" \
+        "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 #########################################
 ## End OS Software Customizations      ##
