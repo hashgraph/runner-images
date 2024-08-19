@@ -1,5 +1,5 @@
 # Source: https://github.com/dotnet/dotnet-docker
-FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
+FROM mcr.microsoft.com/dotnet/runtime:6.0-jammy as build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -87,6 +87,8 @@ RUN apt-get update -y \
     jq \
     python3-pip \
     htop \
+    psmisc \
+    openssh-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
