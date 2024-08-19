@@ -262,7 +262,6 @@ jobs:
           context: ${{ github.workspace }}/scaleset/runner
           platforms: ${{ inputs.platforms }}
           push: ${{ steps.registry.outputs.operation == 'push' }}
-          load: ${{ steps.registry.outputs.operation == 'load' }}
           tags: |
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:${{ inputs.base-os-image }}
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ inputs.runner-version }}-${{ inputs.base-os-image }}
