@@ -254,7 +254,7 @@ jobs:
           
           if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
             DOCKER_REGISTRY_PREFIX="local"
-            IMG_RESULT="load"
+            IMG_RESULT="cache"
           fi
           
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
