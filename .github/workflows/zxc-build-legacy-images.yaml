@@ -31,6 +31,12 @@ on:
         type: string
         required: true
 
+      ## The tag version to be used
+      tag-version:
+        description: "Tag Version:"
+        type: string
+        required: true
+
       ## Upstream Github Action Runner Version
       runner-version:
         description: "Runner Version:"
@@ -260,10 +266,17 @@ jobs:
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
           echo "operation=${IMG_RESULT}" >>"${GITHUB_OUTPUT}"
 
+      - name: Calculate Docker Tag
+        id: docker-tag
+        run: |
+          TAG_VERSION="${{ inputs.tag-version || inputs.runner-version }}"
+          echo "version=${TAG_VERSION//+/-}" >>"${GITHUB_OUTPUT}"
+
       - name: Build Default Image
         env:
           DOCKER_USER: ${{ steps.registry.outputs.prefix }}
           IMG_RESULT: ${{ steps.registry.outputs.operation }}
+          TAG_VERSION: ${{ steps.docker-tag.outputs.version }}
         working-directory: legacy/runner
         if: ${{ inputs.build-default-image }}
         run: make docker-buildx-default
@@ -272,6 +285,7 @@ jobs:
         env:
           DOCKER_USER: ${{ steps.registry.outputs.prefix }}
           IMG_RESULT: ${{ steps.registry.outputs.operation }}
+          TAG_VERSION: ${{ steps.docker-tag.outputs.version }}
         working-directory: legacy/runner
         if: ${{ inputs.build-dind-image }}
         run: make docker-buildx-dind
@@ -280,6 +294,7 @@ jobs:
         env:
           DOCKER_USER: ${{ steps.registry.outputs.prefix }}
           IMG_RESULT: ${{ steps.registry.outputs.operation }}
+          TAG_VERSION: ${{ steps.docker-tag.outputs.version }}
         working-directory: legacy/runner
         if: ${{ inputs.build-dind-rootless-image }}
         run: make docker-buildx-dind-rootless

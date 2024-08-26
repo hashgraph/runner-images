@@ -6,6 +6,7 @@ DIND_ROOTLESS_RUNNER_NAME ?= ${DOCKER_USER}/actions-runner-dind-rootless
 OS_IMAGE ?= ubuntu-22.04
 TARGETPLATFORM ?= $(shell arch)
 
+TAG_VERSION ?= 2.318.0
 RUNNER_VERSION ?= 2.318.0
 RUNNER_CONTAINER_HOOKS_VERSION ?= 0.6.1
 DOCKER_VERSION ?= 24.0.7
@@ -102,7 +103,7 @@ docker-buildx-set:
 	  --build-arg DOCKER_VERSION=${DOCKER_VERSION} \
 	  -f actions-runner.${OS_IMAGE}.dockerfile \
 	  -t "${DEFAULT_RUNNER_NAME}:${OS_IMAGE}" \
-	  -t "${DEFAULT_RUNNER_NAME}:v${RUNNER_VERSION}-${OS_IMAGE}" \
+	  -t "${DEFAULT_RUNNER_NAME}:v${TAG_VERSION}-${OS_IMAGE}" \
 	  . ${PUSH_ARG}
 	${DOCKER} buildx build --platform ${PLATFORMS} \
 	  --build-arg RUNNER_VERSION=${RUNNER_VERSION} \
@@ -110,7 +111,7 @@ docker-buildx-set:
 	  --build-arg DOCKER_VERSION=${DOCKER_VERSION} \
 	  -f actions-runner-dind.${OS_IMAGE}.dockerfile \
 	  -t "${DIND_RUNNER_NAME}:${OS_IMAGE}" \
-	  -t "${DIND_RUNNER_NAME}:v${RUNNER_VERSION}-${OS_IMAGE}" \
+	  -t "${DIND_RUNNER_NAME}:v${TAG_VERSION}-${OS_IMAGE}" \
 	  . ${PUSH_ARG}
 	${DOCKER} buildx build --platform ${PLATFORMS} \
 	  --build-arg RUNNER_VERSION=${RUNNER_VERSION} \
@@ -118,7 +119,7 @@ docker-buildx-set:
 	  --build-arg DOCKER_VERSION=${DOCKER_VERSION} \
 	  -f actions-runner-dind-rootless.${OS_IMAGE}.dockerfile \
 	  -t "${DIND_ROOTLESS_RUNNER_NAME}:${OS_IMAGE}" \
-	  -t "${DIND_ROOTLESS_RUNNER_NAME}:v${RUNNER_VERSION}-${OS_IMAGE}" \
+	  -t "${DIND_ROOTLESS_RUNNER_NAME}:v${TAG_VERSION}-${OS_IMAGE}" \
 	  . ${PUSH_ARG}
 
 docker-buildx-default:
@@ -133,7 +134,7 @@ docker-buildx-default:
 	  --build-arg DOCKER_VERSION=${DOCKER_VERSION} \
 	  -f actions-runner.${OS_IMAGE}.dockerfile \
 	  -t "${DEFAULT_RUNNER_NAME}:${OS_IMAGE}" \
-	  -t "${DEFAULT_RUNNER_NAME}:v${RUNNER_VERSION}-${OS_IMAGE}" \
+	  -t "${DEFAULT_RUNNER_NAME}:v${TAG_VERSION}-${OS_IMAGE}" \
 	  . ${PUSH_ARG}
 
 docker-buildx-dind:
@@ -148,7 +149,7 @@ docker-buildx-dind:
 	  --build-arg DOCKER_VERSION=${DOCKER_VERSION} \
 	  -f actions-runner-dind.${OS_IMAGE}.dockerfile \
 	  -t "${DIND_RUNNER_NAME}:${OS_IMAGE}" \
-	  -t "${DIND_RUNNER_NAME}:v${RUNNER_VERSION}-${OS_IMAGE}" \
+	  -t "${DIND_RUNNER_NAME}:v${TAG_VERSION}-${OS_IMAGE}" \
 	  . ${PUSH_ARG}
 
 docker-buildx-dind-rootless:
@@ -163,5 +164,5 @@ docker-buildx-dind-rootless:
 	  --build-arg DOCKER_VERSION=${DOCKER_VERSION} \
 	  -f actions-runner-dind-rootless.${OS_IMAGE}.dockerfile \
 	  -t "${DIND_ROOTLESS_RUNNER_NAME}:${OS_IMAGE}" \
-	  -t "${DIND_ROOTLESS_RUNNER_NAME}:v${RUNNER_VERSION}-${OS_IMAGE}" \
+	  -t "${DIND_ROOTLESS_RUNNER_NAME}:v${TAG_VERSION}-${OS_IMAGE}" \
 	  . ${PUSH_ARG}

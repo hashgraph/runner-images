@@ -30,6 +30,12 @@ on:
         type: string
         required: true
 
+      ## The tag version to be used
+      tag-version:
+        description: "Tag Version:"
+        type: string
+        required: true
+
       ## Upstream Github Action Runner Version
       runner-version:
         description: "Runner Version:"
@@ -259,6 +265,12 @@ jobs:
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
           echo "operation=${IMG_RESULT}" >>"${GITHUB_OUTPUT}"
 
+      - name: Calculate Docker Tag
+        id: docker-tag
+        run: |
+          TAG_VERSION="${{ inputs.tag-version || inputs.runner-version }}"
+          echo "version=${TAG_VERSION//+/-}" >>"${GITHUB_OUTPUT}"
+
       - name: Build Image
         uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6.7.0
         with:
@@ -268,7 +280,7 @@ jobs:
           load: ${{ steps.registry.outputs.operation == 'load' }}
           tags: |
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:${{ inputs.base-os-image }}
-            ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ inputs.runner-version }}-${{ inputs.base-os-image }}
+            ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ steps.docker-tag.outputs.version }}-${{ inputs.base-os-image }}
           build-args: |
             TARGETOS=linux
             TARGETARCH=amd64
