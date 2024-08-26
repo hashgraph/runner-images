@@ -39,7 +39,8 @@ jobs:
     needs:
       - versions
     outputs:
-      release-needed: ${{ steps.release.outputs.needed }}
+      legacy-release-needed: ${{ steps.legacy-release.outputs.needed }}
+      scaleset-release-needed: ${{ steps.scaleset-release.outputs.needed }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
@@ -57,12 +58,23 @@ jobs:
       - name: Authorize GH CLI
         run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
-      - name: Check for Existing Releases
-        id: release
+      - name: Check for Existing Legacy Releases
+        id: legacy-release
         run: |
           NEEDED="true"
           if gh release view legacy-v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
             echo "::info title=Release Version::Release legacy-v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
+            NEEDED="false"
+          fi
+          
+          echo "needed=${NEEDED}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check for Existing ScaleSet Releases
+        id: scaleset-release
+        run: |
+          NEEDED="true"
+          if gh release view scaleset-v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
+            echo "::info title=Release Version::Release scaleset-v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
             NEEDED="false"
           fi
           
@@ -74,7 +86,7 @@ jobs:
     needs:
       - versions
       - safety-checks
-    if: ${{ needs.safety-checks.outputs.release-needed == 'true' }}
+    if: ${{ needs.safety-checks.outputs.legacy-release-needed == 'true' }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
@@ -101,3 +113,35 @@ jobs:
               -f "build-default-image=true" \
               -f "build-dind-image=true" \
               -f "dry-run-enabled=false"
+
+  scaleset-release:
+    name: ScaleSet Release
+    runs-on: ubuntu-22.04
+    needs:
+      - versions
+      - safety-checks
+    if: ${{ needs.safety-checks.outputs.scaleset-release-needed == 'true' }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@5c7944e73c4c2a096b17a9cb74d65b6c2bbafbde # v2.9.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout Code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Install GH CLI
+        uses: sersoft-gmbh/setup-gh-cli-action@2d02c06e284b7d55e954d6d6406e7a886f45a818 # v2.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Authorize GH CLI
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Launch ScaleSet Release Workflow
+        run: |
+          gh workflow run "flow-release-scaleset-images.yaml" \
+            -r main \
+            -f "runner-version=${{ needs.versions.outputs.runner }}" \
+            -f "runner-container-hooks-version=${{ needs.versions.outputs.hooks }}" \
+            -f "dry-run-enabled=false"

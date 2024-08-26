@@ -105,8 +105,8 @@ jobs:
 
       - name: Check for Existing Releases
         run: |
-          if gh release view scaleset-v${{ needs.versions.outputs.runner }} --json id >/dev/null 2>&1; then
-            echo "::error title=Release Version::Release scaleset-v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
+          if gh release view scaleset-v${{ needs.versions.outputs.tag }} --json id >/dev/null 2>&1; then
+            echo "::error title=Release Version::Release scaleset-v${{ needs.versions.outputs.tag }} already exists and may not be redeployed."
             exit 1
           fi
 
@@ -163,7 +163,7 @@ jobs:
 
       - name: Update Version Descriptor
         working-directory: scaleset/runner
-        run: printf "RUNNER_VERSION=%s\nRUNNER_CONTAINER_HOOKS_VERSION=%s\n" "${{ needs.versions.outputs.runner }}" "${{ needs.versions.outputs.hooks }}" >VERSION
+        run: printf "CONTAINER_VERSION=%s\nRUNNER_VERSION=%s\nRUNNER_CONTAINER_HOOKS_VERSION=%s\n" "${{ needs.versions.outputs.tag }}" "${{ needs.versions.outputs.runner }}" "${{ needs.versions.outputs.hooks }}" >VERSION
 
       - name: Commit Changes
         uses: actions-js/push@5a7cbd780d82c0c937b5977586e641b2fd94acc5 # v1.5
@@ -171,7 +171,7 @@ jobs:
           github_token: ${{ secrets.GH_ACCESS_TOKEN }}
           author_name: ${{ vars.GIT_USER_NAME }}
           author_email: ${{ vars.GIT_USER_EMAIL }}
-          message: "chore(release): scaleset-v${{ needs.versions.outputs.runner }} [skip ci]"
+          message: "chore(release): scaleset-v${{ needs.versions.outputs.tag }} [skip ci]"
 
   finalize-release:
     name: Finalize Release
@@ -222,5 +222,5 @@ jobs:
         with:
           token: ${{ secrets.GH_ACCESS_TOKEN }}
           commit: ${{ github.ref_name }}
-          tag: scaleset-v${{ needs.versions.outputs.runner }}
+          tag: scaleset-v${{ needs.versions.outputs.tag }}
           bodyFile: .github/RELEASE_BODY.md
