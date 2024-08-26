@@ -46,6 +46,7 @@ jobs:
       build-dind-image: true
       build-dind-rootless-image: false
       base-os-image: ubuntu-22.04
+      tag-version: ${{ needs.versions.outputs.runner }}
       runner-version: ${{ needs.versions.outputs.runner }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
       docker-version: 24.0.9
@@ -59,6 +60,7 @@ jobs:
       - versions
     with:
       base-os-image: ubuntu-22.04
+      tag-version: ${{ needs.versions.outputs.runner }}
       runner-version: ${{ needs.versions.outputs.runner }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
       docker-version: 25.0.5

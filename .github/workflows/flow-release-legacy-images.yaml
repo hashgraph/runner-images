@@ -128,6 +128,7 @@ jobs:
     with:
       custom-job-label: "Release"
       base-os-image: ${{ matrix.base-os-image }}
+      tag-version: ${{ needs.versions.outputs.tag }}
       runner-version: ${{ needs.versions.outputs.runner }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
       docker-version: ${{ github.event.inputs.docker-version || '25.0.5' }}

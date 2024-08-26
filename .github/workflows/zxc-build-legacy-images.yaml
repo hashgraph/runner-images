@@ -31,6 +31,12 @@ on:
         type: string
         required: true
 
+      ## The tag version to be used
+      tag-version:
+        description: "Tag Version:"
+        type: string
+        required: true
+
       ## Upstream Github Action Runner Version
       runner-version:
         description: "Runner Version:"
@@ -95,6 +101,7 @@ defaults:
 env:
   OS_IMAGE: ${{ inputs.base-os-image }}
   RUNNER_VERSION: ${{ inputs.runner-version }}
+  TAG_VERSION: ${{ inputs.tag-version || inputs.runner-version }}
   RUNNER_CONTAINER_HOOKS_VERSION: ${{ inputs.runner-container-hooks-version }}
   DOCKER_VERSION: ${{ inputs.docker-version }}
   PLATFORMS: ${{ inputs.platforms }}

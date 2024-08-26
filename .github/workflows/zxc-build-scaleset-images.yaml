@@ -30,6 +30,12 @@ on:
         type: string
         required: true
 
+      ## The tag version to be used
+      tag-version:
+        description: "Tag Version:"
+        type: string
+        required: true
+
       ## Upstream Github Action Runner Version
       runner-version:
         description: "Runner Version:"
@@ -268,7 +274,7 @@ jobs:
           load: ${{ steps.registry.outputs.operation == 'load' }}
           tags: |
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:${{ inputs.base-os-image }}
-            ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ inputs.runner-version }}-${{ inputs.base-os-image }}
+            ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ inputs.tag-version || inputs.runner-version }}-${{ inputs.base-os-image }}
           build-args: |
             TARGETOS=linux
             TARGETARCH=amd64
