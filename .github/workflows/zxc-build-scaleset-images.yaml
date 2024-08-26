@@ -183,6 +183,9 @@ jobs:
           version: v0.16.2
           driver-opts: network=host
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+
       - name: Archive Tool Cache
         working-directory: ${{ runner.tool_cache }}
         run: tar -czf ${{ env.TOOL_CACHE_ARTIFACT_NAME }} *
@@ -194,7 +197,7 @@ jobs:
           retention-days: 1
           path: ${{ runner.tool_cache }}/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
 
-  build-legacy-images:
+  build-scaleset-images:
     name: ${{ inputs.custom-job-label || 'Build' }}
     runs-on: ubuntu-22.04
     needs:
@@ -250,7 +253,7 @@ jobs:
           
           if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
             DOCKER_REGISTRY_PREFIX="local"
-            IMG_RESULT="load"
+            IMG_RESULT="cache"
           fi
           
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
@@ -262,6 +265,7 @@ jobs:
           context: ${{ github.workspace }}/scaleset/runner
           platforms: ${{ inputs.platforms }}
           push: ${{ steps.registry.outputs.operation == 'push' }}
+          load: ${{ steps.registry.outputs.operation == 'load' }}
           tags: |
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:${{ inputs.base-os-image }}
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ inputs.runner-version }}-${{ inputs.base-os-image }}

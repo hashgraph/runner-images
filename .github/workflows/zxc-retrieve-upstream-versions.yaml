@@ -38,6 +38,9 @@ on:
         required: false
         default: "Check"
     outputs:
+      tag:
+        description: "Tag Version"
+        value: ${{ jobs.versions.outputs.tag-version }}
       runner:
         description: "Runner Version"
         value: ${{ jobs.versions.outputs.runner-version }}
@@ -57,6 +60,7 @@ jobs:
     name: ${{ inputs.custom-job-label || 'Check' }}
     runs-on: ubuntu-22.04
     outputs:
+      tag-version: ${{ steps.tag.outputs.version }}
       runner-version: ${{ steps.runner.outputs.version }}
       hooks-version: ${{ steps.hooks.outputs.version }}
     steps:
@@ -129,4 +133,15 @@ jobs:
           [[ "${TARGET_TAG}" == "v" ]] && TARGET_TAG=""
           LATEST_TAG="$(gh release view ${TARGET_TAG} -R actions/runner-container-hooks --json tagName | jq -r '.tagName')"
           VERSION="$(semver get release ${LATEST_TAG})"
+          echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
+
+      - name: Tag Version Information
+        id: tag
+        run: |
+          RELEASE="$(semver get release "${{ inputs.explicit-runner-version || steps.runner.outputs.version }}")"
+          BUILD="$(semver get build "${{ inputs.explicit-runner-version || steps.runner.outputs.version }}")"
+
+          VERSION="${RELEASE}"
+          [[ -n "${BUILD}" ]] && VERSION="${VERSION}+${BUILD}"
+          
           echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"

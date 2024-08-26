@@ -1,5 +1,5 @@
 # Source: https://github.com/dotnet/dotnet-docker
-FROM mcr.microsoft.com/dotnet/runtime:6.0-jammy as build
+FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -32,7 +32,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy
+FROM mcr.microsoft.com/dotnet/runtime:6.0-jammy
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
@@ -85,6 +85,7 @@ RUN apt-get update -y \
     zip \
     gzip \
     jq \
+    skopeo \
     python3-pip \
     htop \
     psmisc \
@@ -113,6 +114,8 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+RUN pip3 install ansible
 #########################################
 ## End OS Software Customizations      ##
 #########################################
