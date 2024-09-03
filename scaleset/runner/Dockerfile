@@ -87,7 +87,7 @@ RUN apt-get update -y \
     jq \
     skopeo \
     python3-pip \
-    build-essentials \
+    build-essential \
     htop \
     psmisc \
     openssh-client \
