@@ -116,8 +116,7 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-RUN pip3 install ansible \
-    && pip3 install solc-select
+RUN pip3 install ansible
 #########################################
 ## End OS Software Customizations      ##
 #########################################
