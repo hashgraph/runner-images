@@ -87,6 +87,7 @@ RUN apt-get update -y \
     jq \
     skopeo \
     python3-pip \
+    build-essential \
     htop \
     psmisc \
     openssh-client \
@@ -115,7 +116,8 @@ RUN export RUNNER_ARCH=${TARGETARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-RUN pip3 install ansible
+RUN pip3 install ansible \
+    && pip3 install solc-select
 #########################################
 ## End OS Software Customizations      ##
 #########################################
