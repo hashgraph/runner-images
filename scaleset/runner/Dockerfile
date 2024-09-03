@@ -107,6 +107,13 @@ RUN export ARCH=${TARGETARCH} \
         | tar -xz --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
     && chmod +x /usr/local/bin/gh
 
+ARG YQ_CLI_VERSION=4.44.3
+RUN export ARCH=${TARGETARCH} \
+    && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
+    && curl -fLo /usr/local/bin/yq \
+        "https://github.com/mikefarah/yq/releases/download/v${YQ_CLI_VERSION}/yq_linux_${ARCH}" \
+    && chmod +x /usr/local/bin/yq
+
 ARG COMPOSE_VERSION=2.29.2
 RUN export RUNNER_ARCH=${TARGETARCH} \
     && if [ "${RUNNER_ARCH}" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
