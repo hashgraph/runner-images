@@ -134,7 +134,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@f0990588f1e5b5af6827153b93673613abdc6ec7 # v2.1.1
 
       - name: Setup Java
-        uses: actions/setup-java@6a0805fcefea3d4657a47ac4c165951e33482018 # v4.2.2
+        uses: actions/setup-java@b36c23c0d998641eff861008f374ee103c25ac73 # v4.4.0
         with:
           distribution: temurin
           java-version: 21
