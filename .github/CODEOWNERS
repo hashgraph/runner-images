@@ -18,7 +18,7 @@
 
 # Protection Rules for Github Configuration Files and Actions Workflows
 /.github/                                       @hashgraph/release-engineering-managers
-/.github/workflows/                             @hashgraph/release-engineering-managers @hashgraph/product-security @hashgraph/devops-ci
+/.github/workflows/                             @hashgraph/release-engineering-managers @hashgraph/product-security @hashgraph/platform-ci
 
 
 # Codacy Tool Configurations
