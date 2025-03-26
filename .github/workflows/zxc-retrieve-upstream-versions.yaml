@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install GH CLI
-        uses: step-security/setup-gh-cli-action@911a1ad924338cbaed4af8b5f982b605345abb46 # v2.0.1
+        uses: step-security/setup-gh-cli-action@44ed3904e30498a8ea98233ac1015af0b0cb1fd4 # v2.0.2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
