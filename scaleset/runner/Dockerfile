@@ -1,17 +1,19 @@
 # Source: https://github.com/dotnet/dotnet-docker
-FROM mcr.microsoft.com/dotnet/runtime-deps:6.0-jammy as build
+ARG BASE_OS_VERSION=jammy
+ARG DOTNET_RUNTIME_VERSION=8.0
+FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION} as build
 
-ARG TARGETOS
-ARG TARGETARCH
+ARG TARGET_OS
+ARG TARGET_ARCH
 ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.6.1
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.7.0
 ARG DOCKER_VERSION=25.0.5
 ARG BUILDX_VERSION=0.16.2
 
 RUN apt update -y && apt install curl unzip -y
 
 WORKDIR /actions-runner
-RUN export RUNNER_ARCH=${TARGETARCH} \
+RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export RUNNER_ARCH=x64 ; fi \
     && curl -f -L -o runner.tar.gz https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-${TARGETOS}-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz \
     && tar xzf ./runner.tar.gz \
@@ -21,18 +23,18 @@ RUN curl -f -L -o runner-container-hooks.zip https://github.com/actions/runner-c
     && unzip ./runner-container-hooks.zip -d ./k8s \
     && rm runner-container-hooks.zip
 
-RUN export RUNNER_ARCH=${TARGETARCH} \
+RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
-    && curl -fLo docker.tgz https://download.docker.com/${TARGETOS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
+    && curl -fLo docker.tgz https://download.docker.com/${TARGET_OS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
     && tar zxvf docker.tgz \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
-        "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
+        "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGET_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM mcr.microsoft.com/dotnet/runtime:6.0-jammy
+FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
@@ -99,23 +101,23 @@ RUN curl -fL https://install-cli.jfrog.io | sh \
     && curl -L -o /usr/local/bin/semver https://raw.githubusercontent.com/fsaintjacques/semver-tool/master/src/semver \
     && chmod +x /usr/local/bin/semver
 
-ARG TARGETARCH
+ARG TARGET_ARCH
 ARG GH_CLI_VERSION=2.54.0
-RUN export ARCH=${TARGETARCH} \
+RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
     && curl -sL https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz \
         | tar -xz --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
     && chmod +x /usr/local/bin/gh
 
 ARG YQ_CLI_VERSION=4.44.3
-RUN export ARCH=${TARGETARCH} \
+RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
     && curl -fLo /usr/local/bin/yq \
         "https://github.com/mikefarah/yq/releases/download/v${YQ_CLI_VERSION}/yq_linux_${ARCH}" \
     && chmod +x /usr/local/bin/yq
 
 ARG COMPOSE_VERSION=2.29.2
-RUN export RUNNER_ARCH=${TARGETARCH} \
+RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "${RUNNER_ARCH}" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "${RUNNER_ARCH}" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
     && mkdir -p /usr/local/lib/docker/cli-plugins \

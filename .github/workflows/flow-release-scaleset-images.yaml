@@ -83,7 +83,7 @@ jobs:
 
   safety-checks:
     name: Safety Checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - versions
     steps:
@@ -134,7 +134,7 @@ jobs:
 
   update-version:
     name: Update Version
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - versions
       - scaleset-image
@@ -176,7 +176,7 @@ jobs:
 
   finalize-release:
     name: Finalize Release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - versions
       - update-version

@@ -25,6 +25,8 @@ on:
       ## Base Operating System Image
       ## Options include:
       ## - ubuntu-22.04
+      ## - ubuntu-24.04
+      ## - debian-bookworm
       base-os-image:
         description: "Operating System Image:"
         type: string
@@ -104,7 +106,7 @@ permissions:
 jobs:
   create-tool-cache:
     name: Create Tool Cache
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
@@ -205,7 +207,7 @@ jobs:
 
   build-scaleset-images:
     name: ${{ inputs.custom-job-label || 'Build' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - create-tool-cache
     steps:
@@ -256,12 +258,12 @@ jobs:
         run: |
           DOCKER_REGISTRY_PREFIX="ghcr.io/${{ github.repository }}"
           IMG_RESULT="push"
-          
+
           if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
             DOCKER_REGISTRY_PREFIX="local"
             IMG_RESULT="cache"
           fi
-          
+
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
           echo "operation=${IMG_RESULT}" >>"${GITHUB_OUTPUT}"
 
@@ -282,11 +284,10 @@ jobs:
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:${{ inputs.base-os-image }}
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ steps.docker-tag.outputs.version }}-${{ inputs.base-os-image }}
           build-args: |
-            TARGETOS=linux
-            TARGETARCH=amd64
+            TARGET_OS=linux
+            TARGET_ARCH=amd64
             RUNNER_VERSION=${{ inputs.runner-version }}
             RUNNER_CONTAINER_HOOKS_VERSION=${{ inputs.runner-container-hooks-version }}
             DOCKER_VERSION=${{ inputs.docker-version }}
             BUILDX_VERSION=${{ inputs.docker-buildx-version }}
             GH_CLI_VERSION=${{ inputs.gh-cli-version }}
-            
