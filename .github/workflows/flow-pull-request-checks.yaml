@@ -36,23 +36,6 @@ jobs:
     uses: ./.github/workflows/zxc-retrieve-upstream-versions.yaml
     if: ${{ !github.event.pull_request.head.repo.fork }}
 
-  legacy-images:
-    name: Legacy Images
-    uses: ./.github/workflows/zxc-build-legacy-images.yaml
-    needs:
-      - versions
-    with:
-      build-default-image: true
-      build-dind-image: true
-      build-dind-rootless-image: false
-      base-os-image: ubuntu-22.04
-      tag-version: ${{ needs.versions.outputs.runner }}
-      runner-version: ${{ needs.versions.outputs.runner }}
-      runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
-      docker-version: 24.0.9
-      platforms: linux/amd64
-      dry-run-enabled: true
-
   scaleset-images:
     name: ScaleSet Images
     uses: ./.github/workflows/zxc-build-scaleset-images.yaml
