@@ -1,0 +1,40 @@
+name: Feature Enhancement
+description: Enhance an existing feature
+labels: ["Feature Enhancement", "Pending Triage"]
+type: Feature
+body:
+  - type: textarea
+    id: target-feature
+    attributes:
+      label: Feature to Enhance
+      description: Which existing feature would you like to enhance?
+      placeholder: |
+        _A clear and concise description of the feature you want to enhance._
+    validations:
+      required: true
+  - type: textarea
+    id: enhancement-description
+    attributes:
+      label: Requested Enhancement
+      description: What would you like to enhance or change about this feature?
+      placeholder: |
+        _A clear and concise description of what you want to happen._
+    validations:
+      required: true
+  - type: textarea
+    id: feature-justification
+    attributes:
+      label: Business Need
+      description: Why is this needed?
+      placeholder: |
+        _Please provide a clear and concise description of the business need for this enhancement. This will help us prioritize the feature request._
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        _Add any other context or screenshots about the feature request here._
+
+        _Tip: You can attach images or log files by clicking this area to highlight it and then dragging files in._
