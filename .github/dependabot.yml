@@ -5,3 +5,20 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+
+  - package-ecosystem: "docker"
+    directory: "/scaleset/runner"
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "build"
+      include: "scope"
+    groups:
+      version:
+        dependency-type: "production"
+        applies-to: "version-updates"
+      security:
+        dependency-type: "production"
+        applies-to: "security-updates"
+    open-pull-requests-limit: 10
