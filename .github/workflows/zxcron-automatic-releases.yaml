@@ -35,7 +35,7 @@ jobs:
 
   safety-checks:
     name: Safety Checks
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - versions
     outputs:
@@ -65,12 +65,12 @@ jobs:
             echo "::info title=Release Version::Release scaleset-v${{ needs.versions.outputs.runner }} already exists and may not be redeployed."
             NEEDED="false"
           fi
-          
+
           echo "needed=${NEEDED}" >> "${GITHUB_OUTPUT}"
 
   scaleset-release:
     name: ScaleSet Release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs:
       - versions
       - safety-checks

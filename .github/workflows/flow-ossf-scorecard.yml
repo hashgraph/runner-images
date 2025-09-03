@@ -12,27 +12,24 @@ on:
     branches:
       - main
 
-defaults:
-  run:
-    shell: bash
-
 concurrency:
   group: ossf-scorecard-${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-permissions:
-  security-events: write
-  id-token: write
-  contents: read
-  actions: read
-  issues: read
-  pull-requests: read
-  checks: read
+permissions: read-all
 
 jobs:
   analysis:
     name: Scorecard Report
     runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+      issues: read
+      pull-requests: read
+      checks: read
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
