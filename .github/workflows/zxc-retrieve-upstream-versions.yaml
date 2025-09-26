@@ -58,7 +58,7 @@ permissions:
 jobs:
   versions:
     name: ${{ inputs.custom-job-label || 'Check' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       tag-version: ${{ steps.tag.outputs.version }}
       runner-version: ${{ steps.runner.outputs.version }}
@@ -143,5 +143,5 @@ jobs:
 
           VERSION="${RELEASE}"
           [[ -n "${BUILD}" ]] && VERSION="${VERSION}+${BUILD}"
-          
+
           echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
