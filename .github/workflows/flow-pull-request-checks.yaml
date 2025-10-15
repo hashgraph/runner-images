@@ -41,8 +41,14 @@ jobs:
     uses: ./.github/workflows/zxc-build-scaleset-images.yaml
     needs:
       - versions
+    strategy:
+      matrix:
+        base-os-image:
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - debian-bookworm
     with:
-      base-os-image: ubuntu-22.04
+      base-os-image: ${{ matrix.base-os-image }}
       tag-version: ${{ needs.versions.outputs.runner }}
       runner-version: ${{ needs.versions.outputs.runner }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
