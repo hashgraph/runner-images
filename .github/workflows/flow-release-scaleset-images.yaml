@@ -120,6 +120,8 @@ jobs:
       matrix:
         base-os-image:
           - ubuntu-22.04
+          - ubuntu-24.04
+          - debian-bookworm
     with:
       custom-job-label: "Release"
       base-os-image: ${{ matrix.base-os-image }}
