@@ -39,7 +39,7 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_V
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
 ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
-ENV ImageOS=ubuntu22
+ENV ImageOS=${BASE_OS_VERSION}
 
 # 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
 RUN apt update -y \
@@ -102,21 +102,21 @@ RUN curl -fL https://install-cli.jfrog.io | sh \
     && chmod +x /usr/local/bin/semver
 
 ARG TARGET_ARCH
-ARG GH_CLI_VERSION=2.54.0
+ARG GH_CLI_VERSION=2.86.0
 RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
     && curl -sL https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz \
         | tar -xz --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
     && chmod +x /usr/local/bin/gh
 
-ARG YQ_CLI_VERSION=4.44.3
+ARG YQ_CLI_VERSION=4.52.2
 RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
     && curl -fLo /usr/local/bin/yq \
         "https://github.com/mikefarah/yq/releases/download/v${YQ_CLI_VERSION}/yq_linux_${ARCH}" \
     && chmod +x /usr/local/bin/yq
 
-ARG COMPOSE_VERSION=2.29.2
+ARG COMPOSE_VERSION=2.40.3
 RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "${RUNNER_ARCH}" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "${RUNNER_ARCH}" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \

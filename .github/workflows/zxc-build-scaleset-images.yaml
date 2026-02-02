@@ -135,52 +135,27 @@ jobs:
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
-          java-version: "21.0.1"
-
-      - name: Setup NodeJS 16
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: 16
-
-      - name: Setup NodeJS 18
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: 18
-
-      - name: Setup NodeJS 19
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: 19
-
-      - name: Setup NodeJS 20
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: 20
+          java-version: "25"
 
       - name: Setup NodeJS 22
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
           node-version: 22
 
-      - name: Setup GoLang 1.20
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      - name: Setup NodeJS 24
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          go-version: "1.20"
+          node-version: 24
 
-      - name: Setup GoLang 1.21.0
+      - name: Setup GoLang 1.25
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
-          go-version: "1.21.0"
+          go-version: "1.25"
 
       - name: Setup Kind
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
         with:
           install_only: true
-
-      - name: Setup Helm v3.12.3
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
-        with:
-          version: "v3.12.3" # helm version
 
       - name: Setup Helm Latest
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
@@ -188,7 +163,7 @@ jobs:
       - name: Setup Docker Buildx Support
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
-          version: v0.16.2
+          version: v0.30.1
           driver-opts: network=host
 
       - name: Setup Terraform
@@ -236,7 +211,7 @@ jobs:
       - name: Setup Docker Buildx Support
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
-          version: v0.16.2
+          version: v0.30.1
           driver-opts: network=host
 
       - name: Show Docker Version
@@ -291,3 +266,4 @@ jobs:
             DOCKER_VERSION=${{ inputs.docker-version }}
             BUILDX_VERSION=${{ inputs.docker-buildx-version }}
             GH_CLI_VERSION=${{ inputs.gh-cli-version }}
+            BASE_OS_VERSION=${{ case(inputs.base-os-image == 'debian-bookworm', 'bookworm-slim', inputs.base-os-image) }}
