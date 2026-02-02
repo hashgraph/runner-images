@@ -266,4 +266,4 @@ jobs:
             DOCKER_VERSION=${{ inputs.docker-version }}
             BUILDX_VERSION=${{ inputs.docker-buildx-version }}
             GH_CLI_VERSION=${{ inputs.gh-cli-version }}
-            BASE_OS_VERSION=${{ case(inputs.base-os-image == 'debian-bookworm', 'bookworm-slim', inputs.base-os-image) }}
+            BASE_OS_VERSION=${{ case(inputs.base-os-image == 'debian-bookworm', 'bookworm-slim', inputs.base-os-image == 'ubuntu-22.04', 'jammy', inputs.base-os-image == 'ubuntu-24.04', 'noble', 'unknown') }}
