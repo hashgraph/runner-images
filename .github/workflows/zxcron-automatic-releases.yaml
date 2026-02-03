@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install GH CLI
-        uses: step-security/setup-gh-cli-action@e10fcdad1b2e6acfd6cd693afaafb66802b5e594 # v2.0.3
+        uses: step-security/setup-gh-cli-action@7772f40c95d3e826fa1dca4844b9117a52493df5 # v3.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -85,7 +85,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install GH CLI
-        uses: step-security/setup-gh-cli-action@e10fcdad1b2e6acfd6cd693afaafb66802b5e594 # v2.0.3
+        uses: step-security/setup-gh-cli-action@7772f40c95d3e826fa1dca4844b9117a52493df5 # v3.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
