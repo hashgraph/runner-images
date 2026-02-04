@@ -1,7 +1,7 @@
 # Source: https://github.com/dotnet/dotnet-docker
 ARG BASE_OS_VERSION=jammy
 ARG DOTNET_RUNTIME_VERSION=8.0
-FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION} as build
+FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION} AS build
 
 ARG TARGET_OS
 ARG TARGET_ARCH
@@ -35,6 +35,8 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION}
+
+ARG BASE_OS_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
@@ -94,9 +96,7 @@ RUN apt-get update -y \
     build-essential \
     htop \
     psmisc \
-    openssh-client \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    openssh-client
 
 RUN curl -fL https://install-cli.jfrog.io | sh \
     && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin \
@@ -127,7 +127,15 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-RUN pip3 install ansible
+RUN if [[ "$(lsb_release -i | awk '{print $3;}')" == "Debian" ]]; then \
+      apt-get install -y --no-install-recommends ansible; \
+    else \
+      pip3 install ansible; \
+    fi
+
+RUN apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 #########################################
 ## End OS Software Customizations      ##
 #########################################
