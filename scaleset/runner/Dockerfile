@@ -127,7 +127,7 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-RUN if [ "$(lsb_release -i | awk '{print $3;}')" == "Debian" ] || [ "$(lsb_release -c | awk '{print $2;}')" == "noble"  ]; then \
+RUN if [ "$(lsb_release -i | awk '{print $3;}')" == "Debian" || "$(lsb_release -c | awk '{print $2;}')" == "noble" ]; then \
       apt-get install -y --no-install-recommends ansible; \
     else \
       pip3 install ansible; \
