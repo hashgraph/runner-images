@@ -49,7 +49,7 @@ RUN apt update -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
-RUN if [[ "$(lsb_release -i | awk '{print $3;}')" == "Ubuntu" ]]; then \
+RUN if [ "$(lsb_release -i | awk '{print $3;}')" == "Ubuntu" ]; then \
       add-apt-repository ppa:git-core/ppa; \
       apt update -y; \
     fi
@@ -127,7 +127,7 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-RUN if [[ "$(lsb_release -i | awk '{print $3;}')" == "Debian" ]]; then \
+RUN if [ "$(lsb_release -i | awk '{print $3;}')" == "Debian" ]; then \
       apt-get install -y --no-install-recommends ansible; \
     else \
       pip3 install ansible; \
