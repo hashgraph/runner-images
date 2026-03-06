@@ -123,7 +123,7 @@ jobs:
         run: rm -rvf "${{ runner.tool_cache }}"/*
 
       - name: Setup Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        uses: step-security/setup-gcloud@eca4ba5778ff559fbc5cb59ab4db7ecdcf779b98 # v3.0.1
 
       - name: Setup Java
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
@@ -155,7 +155,7 @@ jobs:
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
 
       - name: Setup Docker Buildx Support
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: step-security/setup-buildx-action@c60a792b446ef83310733d5cd9d0c8d6870d043f # v3.12.0
         with:
           version: v0.30.1
           driver-opts: network=host
@@ -200,10 +200,10 @@ jobs:
           rm -f ${{ github.workspace }}/scaleset/runner/tools/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
 
       - name: Setup QEmu Support
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        uses: step-security/setup-qemu-action@8c4aef027ab2df56e08f597afe6dd8cd31cb84f5 # v3.7.0
 
       - name: Setup Docker Buildx Support
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: step-security/setup-buildx-action@c60a792b446ef83310733d5cd9d0c8d6870d043f # v3.12.0
         with:
           version: v0.30.1
           driver-opts: network=host
@@ -215,7 +215,7 @@ jobs:
         run: docker info
 
       - name: Docker Login (Github)
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: step-security/docker-login-action@c3e677aae8393bc9c81cfdf9709648720ea4bd4d # v3.6.0
         if: ${{ inputs.dry-run-enabled != true }}
         with:
           registry: ghcr.io
@@ -243,7 +243,7 @@ jobs:
           echo "version=${TAG_VERSION//+/-}" >>"${GITHUB_OUTPUT}"
 
       - name: Build Image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        uses: step-security/docker-build-push-action@a8c3d08b23f8be6aeed43eb1a14ce6fe51284438 # v6.18.0
         with:
           context: ${{ github.workspace }}/scaleset/runner
           platforms: ${{ inputs.platforms }}
