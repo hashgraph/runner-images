@@ -221,7 +221,7 @@ jobs:
           printf "\n\n### _Release Notes have been imported from the [%s](%s) release in the upstream repository._\n\n" "v${{ needs.versions.outputs.runner }}" "${RELEASE_URL}" >> .github/RELEASE_BODY.md
 
       - name: Create Release
-        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20.0
+        uses: step-security/release-action@03a57407052f15d1537fd5469a6fbbc536aba326 # v1.20.0
         with:
           token: ${{ secrets.GH_ACCESS_TOKEN }}
           commit: ${{ github.ref_name }}
