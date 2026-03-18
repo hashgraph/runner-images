@@ -53,7 +53,7 @@ jobs:
       runner-version: ${{ needs.versions.outputs.runner }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
       docker-version: 29.1.3
-      docker-buildx-version: 0.30.1
+      docker-buildx-version: 0.32.1
       gh-cli-version: 2.54.0
       platforms: linux/amd64
       dry-run-enabled: true

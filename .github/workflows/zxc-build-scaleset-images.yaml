@@ -63,7 +63,7 @@ on:
         description: "Docker Buildx Version:"
         type: string
         required: false
-        default: "0.30.1"
+        default: "0.32.1"
 
       # Upstream Github CLI Version
       gh-cli-version:
