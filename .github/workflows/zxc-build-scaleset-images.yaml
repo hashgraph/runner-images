@@ -208,7 +208,6 @@ jobs:
           version: v0.30.1
           driver-opts: |
             network=host
-            image=ghcr.io/hashgraph/runner-images/buildkit:buildx-stable-1
 
       - name: Show Docker Version
         run: docker version
