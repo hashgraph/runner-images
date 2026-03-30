@@ -272,7 +272,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ github.workspace }}/scaleset/runner
-          file: ${{ case(inputs.base-os-image == 'chainguard-wolfi', '{context}/Dockerfile.chainguard', '{context}/Dockerfile') }}
+          file: ${{ case(inputs.base-os-image == 'chainguard-wolfi', format('{0}/scaleset/runner/Dockerfile.chainguard', github.workspace), format('{0}/scaleset/runner/Dockerfile', github.workspace)) }}
           platforms: ${{ inputs.platforms }}
           push: ${{ steps.registry.outputs.operation == 'push' }}
           load: ${{ steps.registry.outputs.operation == 'load' }}
