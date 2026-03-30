@@ -122,6 +122,7 @@ jobs:
           - ubuntu-22.04
           - ubuntu-24.04
           - debian-bookworm
+          - chainguard-wolfi
     with:
       custom-job-label: "Release"
       base-os-image: ${{ matrix.base-os-image }}
