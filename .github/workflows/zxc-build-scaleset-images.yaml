@@ -27,6 +27,7 @@ on:
       ## - ubuntu-22.04
       ## - ubuntu-24.04
       ## - debian-bookworm
+      ## - chainguard-wolfi
       base-os-image:
         description: "Operating System Image:"
         type: string
@@ -214,6 +215,31 @@ jobs:
       - name: Show Docker Info
         run: docker info
 
+      - name: Setup JFrog CLI
+        id: jfrog-cli
+        uses: jfrog/setup-jfrog-cli@c32bf10843e4071112c4ea3abf622d3b27cd8c17 # v4.7.0
+        if: ${{ inputs.base-os-image == 'chainguard-wolfi' }}
+        env:
+          JF_URL: https://${{ vars.JF_SERVER_NAME }}/
+        with:
+          oidc-provider-name: hashgraph
+
+      - name: Show JFrog Config
+        if: ${{ inputs.base-os-image == 'chainguard-wolfi' }}
+        run: jf config show
+
+      - name: Verify JFrog Connectivity
+        if: ${{ inputs.base-os-image == 'chainguard-wolfi' }}
+        run: jf rt ping
+
+      - name: Docker Login (Artifactory)
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        if: ${{ inputs.base-os-image == 'chainguard-wolfi' }}
+        with:
+          registry: ${{ vars.JF_SERVER_NAME }}
+          username: ${{ steps.jfrog-cli.outputs.oidc-user }}
+          password: ${{ steps.jfrog-cli.outputs.oidc-token }}
+
       - name: Docker Login (Github)
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         if: ${{ inputs.dry-run-enabled != true }}
@@ -246,6 +272,7 @@ jobs:
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ github.workspace }}/scaleset/runner
+          file: ${{ case(inputs.base-os-image == 'chainguard-wolfi', format('{0}/scaleset/runner/Dockerfile.chainguard', github.workspace), format('{0}/scaleset/runner/Dockerfile', github.workspace)) }}
           platforms: ${{ inputs.platforms }}
           push: ${{ steps.registry.outputs.operation == 'push' }}
           load: ${{ steps.registry.outputs.operation == 'load' }}
@@ -260,4 +287,4 @@ jobs:
             DOCKER_VERSION=${{ inputs.docker-version }}
             BUILDX_VERSION=${{ inputs.docker-buildx-version }}
             GH_CLI_VERSION=${{ inputs.gh-cli-version }}
-            BASE_OS_VERSION=${{ case(inputs.base-os-image == 'debian-bookworm', 'bookworm-slim', inputs.base-os-image == 'ubuntu-22.04', 'jammy', inputs.base-os-image == 'ubuntu-24.04', 'noble', 'unknown') }}
+            BASE_OS_VERSION=${{ case(inputs.base-os-image == 'debian-bookworm', 'bookworm-slim', inputs.base-os-image == 'ubuntu-22.04', 'jammy', inputs.base-os-image == 'ubuntu-24.04', 'noble', inputs.base-os-image == 'chainguard-wolfi', 'dev', 'unknown') }}

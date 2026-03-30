@@ -47,6 +47,7 @@ jobs:
           - ubuntu-22.04
           - ubuntu-24.04
           - debian-bookworm
+          - chainguard-wolfi
     with:
       base-os-image: ${{ matrix.base-os-image }}
       tag-version: ${{ needs.versions.outputs.runner }}
