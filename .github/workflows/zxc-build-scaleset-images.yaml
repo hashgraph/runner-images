@@ -124,7 +124,7 @@ jobs:
         run: rm -rvf "${{ runner.tool_cache }}"/*
 
       - name: Setup Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+        uses: step-security/setup-gcloud@eca4ba5778ff559fbc5cb59ab4db7ecdcf779b98 # v3.0.1
 
       - name: Setup Java
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
@@ -156,7 +156,7 @@ jobs:
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
 
       - name: Setup Docker Buildx Support
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        uses: step-security/setup-buildx-action@f931205d68723ad9589fd2a7e2ece238bf9de341 # v4.0.0
         with:
           version: v0.32.1
           driver-opts: network=host,image=ghcr.io/hashgraph/runner-images/buildkit:buildx-stable-1
@@ -201,10 +201,10 @@ jobs:
           rm -f ${{ github.workspace }}/scaleset/runner/tools/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
 
       - name: Setup QEmu Support
-        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        uses: step-security/setup-qemu-action@8c4aef027ab2df56e08f597afe6dd8cd31cb84f5 # v3.7.0
 
       - name: Setup Docker Buildx Support
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        uses: step-security/setup-buildx-action@f931205d68723ad9589fd2a7e2ece238bf9de341 # v4.0.0
         with:
           version: v0.32.1
           driver-opts: network=host,image=ghcr.io/hashgraph/runner-images/buildkit:buildx-stable-1
@@ -241,7 +241,7 @@ jobs:
           password: ${{ steps.jfrog-cli.outputs.oidc-token }}
 
       - name: Docker Login (Github)
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        uses: step-security/docker-login-action@870af644803bf9f204aed474adbad2958fec048b # v4.1.0
         if: ${{ inputs.dry-run-enabled != true }}
         with:
           registry: ghcr.io
@@ -269,7 +269,7 @@ jobs:
           echo "version=${TAG_VERSION//+/-}" >>"${GITHUB_OUTPUT}"
 
       - name: Build Image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        uses: step-security/docker-build-push-action@846549baaf047e867d038826129a64d81df0f704 # v7.1.0
         with:
           context: ${{ github.workspace }}/scaleset/runner
           file: ${{ case(inputs.base-os-image == 'chainguard-wolfi', format('{0}/scaleset/runner/Dockerfile.chainguard', github.workspace), format('{0}/scaleset/runner/Dockerfile', github.workspace)) }}
