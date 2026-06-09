@@ -223,7 +223,7 @@ jobs:
 
       - name: Setup JFrog CLI
         id: jfrog-cli
-        uses: jfrog/setup-jfrog-cli@c32bf10843e4071112c4ea3abf622d3b27cd8c17 # v4.7.0
+        uses: step-security/setup-jfrog-cli@3054b554c0fb4915b3d58847fb7730c593dbb934 # v5.0.0
         if: ${{ inputs.base-os-image == 'chainguard-wolfi' }}
         env:
           JF_URL: https://${{ vars.JF_SERVER_NAME }}/
@@ -239,7 +239,7 @@ jobs:
         run: jf rt ping
 
       - name: Docker Login (Artifactory)
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        uses: step-security/docker-login-action@870af644803bf9f204aed474adbad2958fec048b # v4.1.0
         if: ${{ inputs.base-os-image == 'chainguard-wolfi' }}
         with:
           registry: ${{ vars.JF_SERVER_NAME }}
