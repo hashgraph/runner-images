@@ -155,14 +155,25 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-# jammy ships Python 3.10; ansible 10.x / ansible-core 2.17 is the last line that supports it.
-ARG ANSIBLE_VERSION=10.7.0
-ARG ANSIBLE_CORE_VERSION=2.17.14
-RUN if [[ "$(lsb_release -i | awk '{print $3;}')" == "Debian" || "$(lsb_release -c | awk '{print $2;}')" == "noble" ]]; then \
-      apt-get install -y --no-install-recommends ansible; \
-    else \
-      pip3 install --no-cache-dir "ansible==${ANSIBLE_VERSION}" "ansible-core==${ANSIBLE_CORE_VERSION}"; \
-    fi
+# ansible-core 2.22 requires Python >= 3.13, which none of the base OS images ship. A pinned, checksum-verified
+# uv installs a standalone CPython and ansible-core under /opt/uv (entry points in /usr/local/bin); uv itself
+# is removed afterwards.
+ARG UV_VERSION=0.13.8
+ARG ANSIBLE_PYTHON_VERSION=3.13.18
+ARG ANSIBLE_CORE_VERSION=2.22.0
+RUN export UV_ARCH=${TARGET_ARCH} \
+    && if [ "${UV_ARCH}" = "amd64" ]; then export UV_ARCH=x86_64 ; fi \
+    && if [ "${UV_ARCH}" = "arm64" ]; then export UV_ARCH=aarch64 ; fi \
+    && UV_ASSET="uv-${UV_ARCH}-unknown-linux-gnu.tar.gz" \
+    && UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_ASSET}" \
+    && curl -fsSLo "/tmp/${UV_ASSET}" "${UV_URL}" \
+    && curl -fsSLo "/tmp/${UV_ASSET}.sha256" "${UV_URL}.sha256" \
+    && (cd /tmp && sha256sum -c "${UV_ASSET}.sha256") \
+    && tar -xzf "/tmp/${UV_ASSET}" --no-same-owner --strip-components=1 -C /tmp "uv-${UV_ARCH}-unknown-linux-gnu/uv" \
+    && UV_PYTHON_INSTALL_DIR=/opt/uv/python UV_TOOL_DIR=/opt/uv/tools UV_TOOL_BIN_DIR=/usr/local/bin \
+       UV_PYTHON_PREFERENCE=only-managed UV_NO_CACHE=1 \
+       /tmp/uv tool install --python "${ANSIBLE_PYTHON_VERSION}" "ansible-core==${ANSIBLE_CORE_VERSION}" \
+    && rm -f /tmp/uv "/tmp/${UV_ASSET}" "/tmp/${UV_ASSET}.sha256"
 
 RUN apt-get clean \
     && rm -rf /var/lib/apt/lists/*
