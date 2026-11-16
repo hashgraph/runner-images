@@ -152,12 +152,14 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 # ansible-core 2.22 requires Python >= 3.13, which none of the base OS images ship. A pinned, checksum-verified
-# uv installs a standalone CPython and ansible-core under /opt/uv (entry points in /usr/local/bin); uv itself
-# is removed afterwards.
+# uv installs a standalone CPython (/opt/uv/python) and a virtualenv (/opt/ansible) holding ansible-core, the
+# community collection bundle, ansible-lint, yamllint, molecule, and controller-side libraries from the
+# hash-locked ansible-requirements.txt (binary wheels only). Entry points are linked into /usr/local/bin, the venv
+# bin is appended to PATH (ansible-lint expects it there), and uv itself is removed afterwards.
 ARG UV_VERSION=0.13.8
 ARG ANSIBLE_PYTHON_VERSION=3.13.18
-ARG ANSIBLE_CORE_VERSION=2.22.0
-RUN export UV_ARCH=${TARGET_ARCH} \
+RUN --mount=type=bind,source=ansible-requirements.txt,target=/tmp/ansible-requirements.txt \
+    export UV_ARCH=${TARGET_ARCH} \
     && if [ "${UV_ARCH}" = "amd64" ]; then export UV_ARCH=x86_64 ; fi \
     && if [ "${UV_ARCH}" = "arm64" ]; then export UV_ARCH=aarch64 ; fi \
     && UV_ASSET="uv-${UV_ARCH}-unknown-linux-gnu.tar.gz" \
@@ -166,10 +168,13 @@ RUN export UV_ARCH=${TARGET_ARCH} \
     && curl -fsSLo "/tmp/${UV_ASSET}.sha256" "${UV_URL}.sha256" \
     && (cd /tmp && sha256sum -c "${UV_ASSET}.sha256") \
     && tar -xzf "/tmp/${UV_ASSET}" --no-same-owner --strip-components=1 -C /tmp "uv-${UV_ARCH}-unknown-linux-gnu/uv" \
-    && UV_PYTHON_INSTALL_DIR=/opt/uv/python UV_TOOL_DIR=/opt/uv/tools UV_TOOL_BIN_DIR=/usr/local/bin \
-       UV_PYTHON_PREFERENCE=only-managed UV_NO_CACHE=1 \
-       /tmp/uv tool install --python "${ANSIBLE_PYTHON_VERSION}" "ansible-core==${ANSIBLE_CORE_VERSION}" \
+    && export UV_PYTHON_INSTALL_DIR=/opt/uv/python UV_PYTHON_PREFERENCE=only-managed UV_NO_CACHE=1 \
+    && /tmp/uv venv --python "${ANSIBLE_PYTHON_VERSION}" /opt/ansible \
+    && /tmp/uv pip install --python /opt/ansible/bin/python --require-hashes --only-binary :all: \
+        -r /tmp/ansible-requirements.txt \
+    && ln -s /opt/ansible/bin/ansible* /opt/ansible/bin/yamllint /opt/ansible/bin/molecule /usr/local/bin/ \
     && rm -f /tmp/uv "/tmp/${UV_ASSET}" "/tmp/${UV_ASSET}.sha256"
+ENV PATH="${PATH}:/opt/ansible/bin"
 
 #########################################
 ## End OS Software Customizations      ##
