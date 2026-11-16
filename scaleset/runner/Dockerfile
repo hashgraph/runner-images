@@ -100,12 +100,32 @@ RUN apt-get update -y \
     psmisc \
     openssh-client
 
-RUN curl -fL https://install-cli.jfrog.io | sh \
-    && sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin \
-    && curl -L -o /usr/local/bin/semver https://raw.githubusercontent.com/fsaintjacques/semver-tool/master/src/semver \
-    && chmod +x /usr/local/bin/semver
-
 ARG TARGET_ARCH
+ARG JFROG_CLI_VERSION=2.133.0
+RUN JF_URL="https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/${JFROG_CLI_VERSION}/jfrog-cli-linux-${TARGET_ARCH}/jf" \
+    && curl -fsSLo /tmp/jf "${JF_URL}" \
+    && curl -fsSLo /tmp/jf.sha256 "${JF_URL}.sha256" \
+    && echo "$(awk 'NR==1 {print $1}' /tmp/jf.sha256)  /tmp/jf" | sha256sum -c - \
+    && install -m 755 /tmp/jf /usr/local/bin/jf \
+    && rm -f /tmp/jf /tmp/jf.sha256
+
+ARG TASK_VERSION=3.54.0
+RUN TASK_URL="https://github.com/go-task/task/releases/download/v${TASK_VERSION}" \
+    && curl -fsSLo /tmp/task.tar.gz "${TASK_URL}/task_linux_${TARGET_ARCH}.tar.gz" \
+    && curl -fsSLo /tmp/task_checksums.txt "${TASK_URL}/task_checksums.txt" \
+    && echo "$(awk -v f="task_linux_${TARGET_ARCH}.tar.gz" '$2 == f {print $1}' /tmp/task_checksums.txt)  /tmp/task.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/task.tar.gz --no-same-owner -C /usr/local/bin task \
+    && chmod 755 /usr/local/bin/task \
+    && rm -f /tmp/task.tar.gz /tmp/task_checksums.txt
+
+# semver-tool publishes no release checksums; pin the script's SHA-256 alongside its version.
+ARG SEMVER_TOOL_VERSION=3.4.0
+ARG SEMVER_TOOL_SHA256=1ff4a97e4d1e389f6f034f7464ac4365f1be2d900e2dc2121e24a6dc239e8991
+RUN curl -fsSLo /usr/local/bin/semver \
+        "https://raw.githubusercontent.com/fsaintjacques/semver-tool/${SEMVER_TOOL_VERSION}/src/semver" \
+    && echo "${SEMVER_TOOL_SHA256}  /usr/local/bin/semver" | sha256sum -c - \
+    && chmod 755 /usr/local/bin/semver
+
 ARG GH_CLI_VERSION=2.104.0
 RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
