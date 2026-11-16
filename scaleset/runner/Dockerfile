@@ -1,7 +1,13 @@
 # Source: https://github.com/dotnet/dotnet-docker
 ARG BASE_OS_VERSION=jammy
-ARG DOTNET_RUNTIME_VERSION=8.0
-FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION} AS build
+
+# Base images are pinned by digest (one stage per supported BASE_OS_VERSION) so Dependabot can track them.
+# BuildKit only pulls the stage selected by BASE_OS_VERSION.
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy@sha256:01e4e9b15b57a2e8012a872dfe52ca333e0ee8a18e5a9bbd16830c86b0b232b0 AS base-jammy
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-noble@sha256:7745316518f2abec3e133889558c2e8d4b616d3ca138db4c5b8c0914a0af3919 AS base-noble
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-bookworm-slim@sha256:54c5e25d41d6df433e520750bacfa4eed1f664140cd36b37c189dd6c6df33d79 AS base-bookworm-slim
+
+FROM base-${BASE_OS_VERSION} AS build
 
 ARG TARGET_OS
 ARG TARGET_ARCH
@@ -34,7 +40,7 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGET_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION}
+FROM base-${BASE_OS_VERSION}
 
 ARG BASE_OS_VERSION
 
@@ -118,11 +124,11 @@ RUN TASK_URL="https://github.com/go-task/task/releases/download/v${TASK_VERSION}
     && chmod 755 /usr/local/bin/task \
     && rm -f /tmp/task.tar.gz /tmp/task_checksums.txt
 
-# semver-tool publishes no release checksums; pin the script's SHA-256 alongside its version.
-ARG SEMVER_TOOL_VERSION=3.4.0
+# semver-tool publishes no release checksums; pin the commit (tag 3.4.0) and the script's SHA-256.
+ARG SEMVER_TOOL_COMMIT=837ad91179c4126e3b7ff73c35091d5ef561d9a3
 ARG SEMVER_TOOL_SHA256=1ff4a97e4d1e389f6f034f7464ac4365f1be2d900e2dc2121e24a6dc239e8991
 RUN curl -fsSLo /usr/local/bin/semver \
-        "https://raw.githubusercontent.com/fsaintjacques/semver-tool/${SEMVER_TOOL_VERSION}/src/semver" \
+        "https://raw.githubusercontent.com/fsaintjacques/semver-tool/${SEMVER_TOOL_COMMIT}/src/semver" \
     && echo "${SEMVER_TOOL_SHA256}  /usr/local/bin/semver" | sha256sum -c - \
     && chmod 755 /usr/local/bin/semver
 
@@ -149,10 +155,13 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
+# jammy ships Python 3.10; ansible 10.x / ansible-core 2.17 is the last line that supports it.
+ARG ANSIBLE_VERSION=10.7.0
+ARG ANSIBLE_CORE_VERSION=2.17.14
 RUN if [[ "$(lsb_release -i | awk '{print $3;}')" == "Debian" || "$(lsb_release -c | awk '{print $2;}')" == "noble" ]]; then \
       apt-get install -y --no-install-recommends ansible; \
     else \
-      pip3 install ansible; \
+      pip3 install --no-cache-dir "ansible==${ANSIBLE_VERSION}" "ansible-core==${ANSIBLE_CORE_VERSION}"; \
     fi
 
 RUN apt-get clean \

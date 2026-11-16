@@ -21,4 +21,8 @@ updates:
       security:
         dependency-type: "production"
         applies-to: "security-updates"
+    ignore:
+      # Stay on the .NET 8 runtime base images; only take digest/patch updates.
+      - dependency-name: "*dotnet/runtime*"
+        update-types: ["version-update:semver-major"]
     open-pull-requests-limit: 10
