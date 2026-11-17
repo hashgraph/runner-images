@@ -1,0 +1,20 @@
+# Top-level Python tooling for the runner images' Ansible environment (CPython 3.13, see ANSIBLE_PYTHON_VERSION
+# in the Dockerfiles). After editing, regenerate the hash-locked ansible-requirements.txt with:
+#
+#   uv pip compile --universal --python-version 3.13 --generate-hashes --no-header \
+#     --output-file ansible-requirements.txt ansible-requirements.in
+#
+ansible-core==2.22.0
+# Community package: the default collection set built for ansible-core 2.22. Pre-release; move to 15.0.0 at GA.
+ansible==15.0.0rc1
+ansible-lint==26.11.0
+yamllint==1.38.0
+molecule==26.11.0
+molecule-plugins[docker]==26.11.0
+
+# Controller-side libraries required by common collection modules, filters, and lookups, so workflows can use
+# them without installing anything at runtime.
+docker==7.2.0     # community.docker modules, molecule docker driver
+jmespath==1.1.0   # community.general.json_query filter
+netaddr==1.3.0    # ansible.utils ipaddr / ipv4 / ipv6 / ipsubnet filters
+dnspython==2.9.2  # community.general.dig lookup

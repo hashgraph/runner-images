@@ -1,14 +1,18 @@
 # Source: https://github.com/dotnet/dotnet-docker
 ARG BASE_OS_VERSION=dev
-ARG DOTNET_RUNTIME_VERSION=8.0
-FROM artifacts.hashgraph.io/chainguard-docker-external/hashgraph.com/dotnet-runtime:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION} AS build
+
+# Base image is pinned by digest (one stage per supported BASE_OS_VERSION) so Dependabot can track it.
+# BuildKit only pulls the stage selected by BASE_OS_VERSION.
+FROM artifacts.hashgraph.io/chainguard-docker-external/hashgraph.com/dotnet-runtime:8.0-dev@sha256:797737bb580e3b53e619293190cc963a832992cb5341fb553f07bbd743c997d3 AS base-dev
+
+FROM base-${BASE_OS_VERSION} AS build
 
 ARG TARGET_OS
 ARG TARGET_ARCH
 ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.0
-ARG DOCKER_VERSION=29.1.3
-ARG BUILDX_VERSION=0.32.1
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.1
+ARG DOCKER_VERSION=29.10.0
+ARG BUILDX_VERSION=0.39.0
 
 SHELL ["/bin/bash", "-c"]
 
@@ -38,7 +42,7 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGET_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM artifacts.hashgraph.io/chainguard-docker-external/hashgraph.com/dotnet-runtime:${DOTNET_RUNTIME_VERSION}-${BASE_OS_VERSION}
+FROM base-${BASE_OS_VERSION}
 
 ARG BASE_OS_VERSION
 
@@ -79,8 +83,6 @@ COPY --link --chown=1001:321 --chmod=777 tools /home/runner/_work/_tool
 #########################################
 ## Begin OS Software Customizations    ##
 #########################################
-RUN curl -1sLf 'https://dl.cloudsmith.io/public/task/task/setup.alpine.sh' | bash
-
 RUN apk add \
     git \
     make \
@@ -96,32 +98,51 @@ RUN apk add \
     htop \
     psmisc \
     openssh-client \
-    py3-ansible-runner \
-    task
+    py3-ansible-runner
 
 RUN apk cache clean
 
-RUN curl -fL https://install-cli.jfrog.io | bash
-
-RUN curl -L -o /usr/local/bin/semver https://raw.githubusercontent.com/fsaintjacques/semver-tool/master/src/semver \
-    && chmod +x /usr/local/bin/semver
-
 ARG TARGET_ARCH
-ARG GH_CLI_VERSION=2.86.0
+ARG JFROG_CLI_VERSION=2.133.0
+RUN JF_URL="https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/${JFROG_CLI_VERSION}/jfrog-cli-linux-${TARGET_ARCH}/jf" \
+    && curl -fsSLo /tmp/jf "${JF_URL}" \
+    && curl -fsSLo /tmp/jf.sha256 "${JF_URL}.sha256" \
+    && echo "$(awk 'NR==1 {print $1}' /tmp/jf.sha256)  /tmp/jf" | sha256sum -c - \
+    && install -m 755 /tmp/jf /usr/local/bin/jf \
+    && rm -f /tmp/jf /tmp/jf.sha256
+
+ARG TASK_VERSION=3.54.0
+RUN TASK_URL="https://github.com/go-task/task/releases/download/v${TASK_VERSION}" \
+    && curl -fsSLo /tmp/task.tar.gz "${TASK_URL}/task_linux_${TARGET_ARCH}.tar.gz" \
+    && curl -fsSLo /tmp/task_checksums.txt "${TASK_URL}/task_checksums.txt" \
+    && echo "$(awk -v f="task_linux_${TARGET_ARCH}.tar.gz" '$2 == f {print $1}' /tmp/task_checksums.txt)  /tmp/task.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/task.tar.gz --no-same-owner -C /usr/local/bin task \
+    && chmod 755 /usr/local/bin/task \
+    && rm -f /tmp/task.tar.gz /tmp/task_checksums.txt
+
+# semver-tool publishes no release checksums; pin the commit (tag 3.4.0) and the script's SHA-256.
+ARG SEMVER_TOOL_COMMIT=837ad91179c4126e3b7ff73c35091d5ef561d9a3
+ARG SEMVER_TOOL_SHA256=1ff4a97e4d1e389f6f034f7464ac4365f1be2d900e2dc2121e24a6dc239e8991
+RUN curl -fsSLo /usr/local/bin/semver \
+        "https://raw.githubusercontent.com/fsaintjacques/semver-tool/${SEMVER_TOOL_COMMIT}/src/semver" \
+    && echo "${SEMVER_TOOL_SHA256}  /usr/local/bin/semver" | sha256sum -c - \
+    && chmod 755 /usr/local/bin/semver
+
+ARG GH_CLI_VERSION=2.104.0
 RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
     && curl -sL https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz \
         | tar -xz --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
     && chmod +x /usr/local/bin/gh
 
-ARG YQ_CLI_VERSION=4.52.2
+ARG YQ_CLI_VERSION=4.54.3
 RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
     && curl -fLo /usr/local/bin/yq \
         "https://github.com/mikefarah/yq/releases/download/v${YQ_CLI_VERSION}/yq_linux_${ARCH}" \
     && chmod +x /usr/local/bin/yq
 
-ARG COMPOSE_VERSION=2.40.3
+ARG COMPOSE_VERSION=5.7.1
 RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "${RUNNER_ARCH}" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "${RUNNER_ARCH}" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
@@ -129,6 +150,31 @@ RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# ansible-core 2.22 requires Python >= 3.13, which none of the base OS images ship. A pinned, checksum-verified
+# uv installs a standalone CPython (/opt/uv/python) and a virtualenv (/opt/ansible) holding ansible-core, the
+# community collection bundle, ansible-lint, yamllint, molecule, and controller-side libraries from the
+# hash-locked ansible-requirements.txt (binary wheels only). Entry points are linked into /usr/local/bin, the venv
+# bin is appended to PATH (ansible-lint expects it there), and uv itself is removed afterwards.
+ARG UV_VERSION=0.13.8
+ARG ANSIBLE_PYTHON_VERSION=3.13.18
+RUN --mount=type=bind,source=ansible-requirements.txt,target=/tmp/ansible-requirements.txt \
+    export UV_ARCH=${TARGET_ARCH} \
+    && if [ "${UV_ARCH}" = "amd64" ]; then export UV_ARCH=x86_64 ; fi \
+    && if [ "${UV_ARCH}" = "arm64" ]; then export UV_ARCH=aarch64 ; fi \
+    && UV_ASSET="uv-${UV_ARCH}-unknown-linux-gnu.tar.gz" \
+    && UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_ASSET}" \
+    && curl -fsSLo "/tmp/${UV_ASSET}" "${UV_URL}" \
+    && curl -fsSLo "/tmp/${UV_ASSET}.sha256" "${UV_URL}.sha256" \
+    && (cd /tmp && sha256sum -c "${UV_ASSET}.sha256") \
+    && tar -xzf "/tmp/${UV_ASSET}" --no-same-owner --strip-components=1 -C /tmp "uv-${UV_ARCH}-unknown-linux-gnu/uv" \
+    && export UV_PYTHON_INSTALL_DIR=/opt/uv/python UV_PYTHON_PREFERENCE=only-managed UV_NO_CACHE=1 \
+    && /tmp/uv venv --python "${ANSIBLE_PYTHON_VERSION}" /opt/ansible \
+    && /tmp/uv pip install --python /opt/ansible/bin/python --require-hashes --only-binary :all: \
+        -r /tmp/ansible-requirements.txt \
+    && ln -s /opt/ansible/bin/ansible* /opt/ansible/bin/yamllint /opt/ansible/bin/molecule /usr/local/bin/ \
+    && rm -f /tmp/uv "/tmp/${UV_ASSET}" "/tmp/${UV_ASSET}.sha256"
+ENV PATH="${PATH}:/opt/ansible/bin"
 
 #########################################
 ## End OS Software Customizations      ##
