@@ -42,6 +42,8 @@ jobs:
     needs:
       - versions
     strategy:
+      # Report every OS independently so one image's failure doesn't hide another's.
+      fail-fast: false
       matrix:
         base-os-image:
           - ubuntu-22.04

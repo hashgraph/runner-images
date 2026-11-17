@@ -183,6 +183,19 @@ jobs:
         with:
           terraform_version: "1.17.2"
 
+      # Running Python (setup-python's pip upgrade) rewrites the stdlib .pyc files of every module it imports with the
+      # install-time source mtime, which differs between runs and goes stale once the archive clamps mtimes. Recompile
+      # the whole tree as checked-hash .pyc files (valid regardless of mtime); PYTHONHASHSEED fixes the order of set
+      # constants. The excluded paths are CPython test fixtures that intentionally fail to compile.
+      - name: Normalize Python Bytecode
+        run: |
+          for py in "${{ runner.tool_cache }}"/Python/*/x64/bin/python3; do
+            PYTHONHASHSEED=0 "${py}" -W ignore -P -s -m compileall -f -q -o 0 -o 1 -o 2 \
+              --invalidation-mode checked-hash \
+              -x '/(bad_coding|badsyntax)[^/]*\.py$|/test_lib2to3/data/|/lib2to3/tests/data/' \
+              "$(dirname "$(dirname "${py}")")/lib"
+          done
+
       - name: Archive Tool Cache
         run: |
           tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --clamp-mtime --owner=0 --group=0 --numeric-owner \
