@@ -1,0 +1,12 @@
+# Top-level Wolfi packages for Dockerfile.chainguard, grouped by the Dockerfile step that installs them.
+# After editing this file, or to pick up newer package builds, regenerate the full pinned closure in apk-packages.lock:
+#
+#   scaleset/runner/update-apk-lock.sh
+#
+# Format: <step> <package> [<package> ...]
+#   build   build stage (downloads the runner, container hooks, and docker CLI)
+#   system  final stage, before the runner user is created
+#   tools   final stage, "OS Software Customizations" toolchain
+build   curl unzip
+system  sudo lsb-release-minimal gpg-agent bash gnutar
+tools   git make wget gnupg tree curl unzip zip gzip jq skopeo htop psmisc openssh-client py3-ansible-runner

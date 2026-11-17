@@ -30,34 +30,8 @@ on:
         required: false
         default: "0.8.1"
 
-      ## Upstream Docker Version
-      docker-version:
-        description: "Docker Version:"
-        type: string
-        required: false
-        default: "29.10.0"
-
-      ## Upstream Docker Buildx Version
-      docker-buildx-version:
-        description: "Docker Buildx Version:"
-        type: string
-        required: false
-        default: "0.39.0"
-
-      ## Upstream Github CLI Version
-      gh-cli-version:
-        description: "GitHub CLI Version:"
-        type: string
-        required: false
-        default: "2.104.0"
-
-      ## Linux Architectures for Multi-Arch Builds
-      platforms:
-        description: "Platforms:"
-        type: string
-        required: false
-        default: "linux/amd64"
-
+      ## Images are built for linux/amd64 only. Docker, buildx, and GitHub CLI versions are pinned together with
+      ## their SHA-256 checksums in the Dockerfiles; change them there rather than at dispatch time.
       dry-run-enabled:
         description: "Perform Dry Run"
         type: boolean
@@ -128,11 +102,9 @@ jobs:
       base-os-image: ${{ matrix.base-os-image }}
       tag-version: ${{ needs.versions.outputs.tag }}
       runner-version: ${{ needs.versions.outputs.runner }}
+      runner-sha256: ${{ needs.versions.outputs.runner-sha256 }}
       runner-container-hooks-version: ${{ needs.versions.outputs.hooks }}
-      docker-version: ${{ github.event.inputs.docker-version || '29.10.0' }}
-      docker-buildx-version: ${{ github.event.inputs.docker-buildx-version || '0.39.0' }}
-      gh-cli-version: ${{ github.event.inputs.gh-cli-version || '2.104.0' }}
-      platforms: ${{ github.event.inputs.platforms || 'linux/amd64' }}
+      runner-container-hooks-sha256: ${{ needs.versions.outputs.hooks-sha256 }}
       dry-run-enabled: ${{ github.event.inputs.dry-run-enabled == 'true' || github.ref_name != 'main' }}
 
   update-version:

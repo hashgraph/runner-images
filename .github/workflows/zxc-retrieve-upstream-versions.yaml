@@ -47,6 +47,12 @@ on:
       hooks:
         description: "Container Hooks Version"
         value: ${{ jobs.versions.outputs.hooks-version }}
+      runner-sha256:
+        description: "Runner linux-x64 Tarball SHA-256"
+        value: ${{ jobs.versions.outputs.runner-sha256 }}
+      hooks-sha256:
+        description: "Container Hooks k8s Zip SHA-256"
+        value: ${{ jobs.versions.outputs.hooks-sha256 }}
 
 defaults:
   run:
@@ -63,6 +69,8 @@ jobs:
       tag-version: ${{ steps.tag.outputs.version }}
       runner-version: ${{ steps.runner.outputs.version }}
       hooks-version: ${{ steps.hooks.outputs.version }}
+      runner-sha256: ${{ steps.checksums.outputs.runner-sha256 }}
+      hooks-sha256: ${{ steps.checksums.outputs.hooks-sha256 }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
@@ -134,6 +142,50 @@ jobs:
           LATEST_TAG="$(gh release view ${TARGET_TAG} -R actions/runner-container-hooks --json tagName | jq -r '.tagName')"
           VERSION="$(semver get release ${LATEST_TAG})"
           echo "version=${VERSION}" >>"${GITHUB_OUTPUT}"
+
+      # The image build verifies the downloaded runner and hooks archives against these checksums. The runner's
+      # checksum must agree in two places: GitHub's asset digest and the SHA its release pipeline writes into the
+      # release notes. The hooks release only publishes the asset digest.
+      - name: Retrieve Upstream Checksums
+        id: checksums
+        env:
+          RUNNER_VERSION: ${{ steps.runner.outputs.version }}
+          HOOKS_VERSION: ${{ steps.hooks.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          asset_sha256() {
+            jq -r --arg asset "$2" '.assets[] | select(.name == $asset) | .digest // empty' <<<"$1" | sed 's/^sha256://'
+          }
+
+          require_sha256() {
+            if [[ ! "$2" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error title=Upstream Checksum::Missing or malformed SHA-256 for $1: '$2'"
+              exit 1
+            fi
+          }
+
+          RUNNER_ASSET="actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
+          RUNNER_RELEASE="$(gh api "repos/actions/runner/releases/tags/v${RUNNER_VERSION}")"
+          RUNNER_SHA256="$(asset_sha256 "${RUNNER_RELEASE}" "${RUNNER_ASSET}")"
+          RUNNER_NOTES_SHA256="$(jq -r '.body' <<<"${RUNNER_RELEASE}" |
+            sed -nE 's/.*<!-- BEGIN SHA linux-x64 -->([0-9a-f]{64})<!-- END SHA linux-x64 -->.*/\1/p' | head -n 1)"
+          require_sha256 "${RUNNER_ASSET} (asset digest)" "${RUNNER_SHA256}"
+          require_sha256 "${RUNNER_ASSET} (release notes)" "${RUNNER_NOTES_SHA256}"
+          if [[ "${RUNNER_SHA256}" != "${RUNNER_NOTES_SHA256}" ]]; then
+            echo "::error title=Upstream Checksum::${RUNNER_ASSET} asset digest ${RUNNER_SHA256} does not match the release notes SHA ${RUNNER_NOTES_SHA256}"
+            exit 1
+          fi
+
+          HOOKS_ASSET="actions-runner-hooks-k8s-${HOOKS_VERSION}.zip"
+          HOOKS_RELEASE="$(gh api "repos/actions/runner-container-hooks/releases/tags/v${HOOKS_VERSION}")"
+          HOOKS_SHA256="$(asset_sha256 "${HOOKS_RELEASE}" "${HOOKS_ASSET}")"
+          require_sha256 "${HOOKS_ASSET} (asset digest)" "${HOOKS_SHA256}"
+
+          echo "${RUNNER_ASSET}: ${RUNNER_SHA256}"
+          echo "${HOOKS_ASSET}: ${HOOKS_SHA256}"
+          echo "runner-sha256=${RUNNER_SHA256}" >>"${GITHUB_OUTPUT}"
+          echo "hooks-sha256=${HOOKS_SHA256}" >>"${GITHUB_OUTPUT}"
 
       - name: Tag Version Information
         id: tag
