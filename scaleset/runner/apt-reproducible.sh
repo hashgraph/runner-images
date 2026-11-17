@@ -92,8 +92,9 @@ clean() {
   apt-get clean
   rm -rf /var/lib/apt/lists/* /var/cache/apt/*.bin /var/cache/debconf/*-old /var/cache/ldconfig/aux-cache \
     /var/cache/man/* /var/lib/dpkg/*-old /var/log/apt/* /var/log/alternatives.log /var/log/dpkg.log \
-    /root/.launchpadlib /var/lib/dbus/machine-id
-  # Package scripts (dbus) generate a random machine ID. Images ship it empty so each container gets its own.
+    /root/.launchpadlib /var/lib/dbus/machine-id /run/systemd/resolve/stub-resolv.conf
+  # Package scripts generate host-specific state: dbus a random machine ID (images ship it empty so each container
+  # gets its own) and jammy's systemd a copy of the build host's resolv.conf (containers get DNS from the runtime).
   if [[ -s /etc/machine-id ]]; then
     : >/etc/machine-id
   fi
