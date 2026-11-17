@@ -117,8 +117,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # Exported before any tool is installed: Python's compileall then writes hash-based .pyc files instead of
-      # embedding install-time source mtimes, and the archive below clamps every timestamp to the commit time.
+      # Exported before any tool is installed so installers that honor it (such as Python's compileall) avoid
+      # embedding install-time timestamps; the archive below clamps every timestamp to the commit time.
       - name: Set Source Date Epoch
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >>"${GITHUB_ENV}"
 
