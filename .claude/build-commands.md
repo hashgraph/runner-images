@@ -21,19 +21,27 @@ The build args mirror what `zxc-build-scaleset-images.yaml` passes. CI prefills 
 - Debian/Ubuntu variant (pick the `BASE_OS_VERSION`: `jammy` / `noble` / `bookworm-slim`):
 
   ```bash
+  RUNNER_VERSION="$(grep '^RUNNER_VERSION=' scaleset/runner/VERSION | cut -d= -f2)"
+  RUNNER_SHA256="$(gh api "repos/actions/runner/releases/tags/v${RUNNER_VERSION}" \
+    --jq ".assets[] | select(.name == \"actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz\") | .digest" | sed 's/^sha256://')"
+
   docker buildx build \
     --file scaleset/runner/Dockerfile \
-    --build-arg TARGET_OS=linux \
-    --build-arg TARGET_ARCH=amd64 \
-    --build-arg RUNNER_VERSION=2.334.0 \
-    --build-arg RUNNER_CONTAINER_HOOKS_VERSION=0.8.1 \
+    --build-arg SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" \
+    --build-arg RUNNER_VERSION="${RUNNER_VERSION}" \
+    --build-arg RUNNER_SHA256="${RUNNER_SHA256}" \
     --build-arg BASE_OS_VERSION=noble \
     --platform linux/amd64 \
     --load -t scaleset-runner:local \
     scaleset/runner
   ```
 
+  `SOURCE_DATE_EPOCH` is required: it selects the apt snapshot (the UTC day before the commit) and, with `--output type=...,rewrite-timestamp=true`, clamps file timestamps so the build is reproducible. `RUNNER_SHA256` is required; the container hooks, docker, buildx, gh, yq, and compose checksums default to the values pinned in the Dockerfile. Images are linux/amd64 only.
+
+- Reproducibility check: build twice with `--no-cache --output type=oci,dest=<dir>,tar=false,rewrite-timestamp=true` and compare with `python3 -I .github/scripts/oci-image-report.py <dir> <report-dir>`; the two `digest.txt` files must match, and `diff` of the `files.tsv` reports names any file that differs.
+
 - Chainguard Wolfi variant requires access to the internal Artifactory mirror (`artifacts.hashgraph.io`), so it generally only builds in CI where JFrog OIDC auth is available. Use `--file scaleset/runner/Dockerfile.chainguard` and `--build-arg BASE_OS_VERSION=dev`.
+- `scaleset/runner/update-apk-lock.sh` — Regenerate `apk-packages.lock` (the exact Wolfi package closure) after editing `apk-packages.in` or the Chainguard base digest, or to pick up newer package builds. Needs docker and pull access to `artifacts.hashgraph.io`; no amd64 emulation required.
 
 The `base-os-image → BASE_OS_VERSION` and Dockerfile selection live in the `case(...)` expressions in `zxc-build-scaleset-images.yaml`; mirror them when building by hand.
 

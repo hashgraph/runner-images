@@ -9,40 +9,63 @@ FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-bookworm-slim@sha256:54c5e25d41d6
 
 FROM base-${BASE_OS_VERSION} AS build
 
-ARG TARGET_OS
-ARG TARGET_ARCH
-ARG RUNNER_VERSION
-ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.1
-ARG DOCKER_VERSION=29.10.0
-ARG BUILDX_VERSION=0.39.0
+# Reproducible builds: SOURCE_DATE_EPOCH (the commit time, set by CI) pins the apt snapshot and file timestamps.
+# APT_SNAPSHOT (YYYYMMDDTHHMMSSZ) optionally overrides the snapshot. See apt-reproducible.sh.
+ARG SOURCE_DATE_EPOCH
+ARG APT_SNAPSHOT
 
-RUN apt update -y && apt install curl unzip -y
+# Only linux/amd64 images are built; every *_SHA256 below is the checksum of the amd64 asset.
+ARG TARGET_OS=linux
+ARG TARGET_ARCH=amd64
+ARG RUNNER_VERSION
+ARG RUNNER_SHA256
+ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.1
+ARG RUNNER_CONTAINER_HOOKS_SHA256=2c3c4526f8a8d517373a2a0daa6122d7887bdc465c54945c6d716db87d9d9b4f
+ARG DOCKER_VERSION=29.10.0
+ARG DOCKER_SHA256=7c1ebadc65c716cdc6d35fc78759ed0e4317debf43c21dd12f066f2006999def
+ARG BUILDX_VERSION=0.39.0
+ARG BUILDX_SHA256=5fb31a097304fbf6dd4038649a0decf32c2b9510e4047acd7d68b9d700c46194
+
+RUN --mount=type=bind,source=apt-reproducible.sh,target=/tmp/apt-reproducible.sh \
+    if [ "${TARGET_ARCH}" != "amd64" ]; then echo "error: only amd64 images are supported" >&2; exit 1; fi \
+    && bash /tmp/apt-reproducible.sh pin \
+    && apt-get update -y --error-on=any \
+    && apt-get install -y curl unzip
 
 WORKDIR /actions-runner
-RUN export RUNNER_ARCH=${TARGET_ARCH} \
+RUN if [ -z "${RUNNER_VERSION}" ] || [ -z "${RUNNER_SHA256}" ]; then \
+      echo "error: RUNNER_VERSION and RUNNER_SHA256 build args are required" >&2; exit 1; \
+    fi \
+    && export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export RUNNER_ARCH=x64 ; fi \
-    && curl -f -L -o runner.tar.gz https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-${TARGET_OS}-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz \
+    && curl -fsSLo runner.tar.gz https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-${TARGET_OS}-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz \
+    && echo "${RUNNER_SHA256}  runner.tar.gz" | sha256sum -c - \
     && tar xzf ./runner.tar.gz \
     && rm runner.tar.gz
 
-RUN curl -f -L -o runner-container-hooks.zip https://github.com/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_VERSION}/actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_VERSION}.zip \
+RUN curl -fsSLo runner-container-hooks.zip https://github.com/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_VERSION}/actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_VERSION}.zip \
+    && echo "${RUNNER_CONTAINER_HOOKS_SHA256}  runner-container-hooks.zip" | sha256sum -c - \
     && unzip ./runner-container-hooks.zip -d ./k8s \
     && rm runner-container-hooks.zip
 
 RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "$RUNNER_ARCH" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
-    && curl -fLo docker.tgz https://download.docker.com/${TARGET_OS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
+    && curl -fsSLo docker.tgz https://download.docker.com/${TARGET_OS}/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz \
+    && echo "${DOCKER_SHA256}  docker.tgz" | sha256sum -c - \
     && tar zxvf docker.tgz \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
-    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
+    && curl -fsSLo /usr/local/lib/docker/cli-plugins/docker-buildx \
         "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGET_ARCH}" \
+    && echo "${BUILDX_SHA256}  /usr/local/lib/docker/cli-plugins/docker-buildx" | sha256sum -c - \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 FROM base-${BASE_OS_VERSION}
 
 ARG BASE_OS_VERSION
+ARG SOURCE_DATE_EPOCH
+ARG APT_SNAPSHOT
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNNER_MANUALLY_TRAP_SIG=1
@@ -51,23 +74,29 @@ ENV ImageOS=${BASE_OS_VERSION}
 
 SHELL ["/bin/bash", "-c"]
 
-# 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows
-RUN apt update -y \
-    && apt install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
+# 'gpg-agent' and 'software-properties-common' are needed for the 'add-apt-repository' command that follows.
+# The git-core/ppa is configured based on guidance here: https://git-scm.com/download/linux
+# Every apt source, including the PPA, is pinned to the same point-in-time snapshot (see apt-reproducible.sh).
+RUN --mount=type=bind,source=apt-reproducible.sh,target=/tmp/apt-reproducible.sh \
+    bash /tmp/apt-reproducible.sh pin \
+    && apt-get update -y --error-on=any \
+    && apt-get install -y --no-install-recommends sudo lsb-release gpg-agent software-properties-common \
+    && if [[ "$(lsb_release -is)" == "Ubuntu" ]]; then \
+         add-apt-repository -y --no-update ppa:git-core/ppa \
+         && bash /tmp/apt-reproducible.sh pin; \
+       fi \
+    && bash /tmp/apt-reproducible.sh clean
 
-# Configure git-core/ppa based on guidance here:  https://git-scm.com/download/linux
-RUN if [[ "$(lsb_release -i | awk '{print $3;}')" == "Ubuntu" ]]; then \
-      add-apt-repository ppa:git-core/ppa; \
-      apt update -y; \
-    fi
-
+# The shadow "last password change" field defaults to the build date; derive it from SOURCE_DATE_EPOCH instead.
 RUN adduser --disabled-password --gecos "" --uid 1001 runner \
     && groupadd docker --gid 123 \
     && usermod -aG sudo runner \
     && usermod -aG docker runner \
     && echo "%sudo   ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers \
-    && echo "Defaults env_keep += \"DEBIAN_FRONTEND\"" >> /etc/sudoers
+    && echo "Defaults env_keep += \"DEBIAN_FRONTEND\"" >> /etc/sudoers \
+    && if [[ -n "${SOURCE_DATE_EPOCH}" ]]; then \
+         sed -i -E "s/^(runner:[^:]*:)[0-9]*:/\1$((SOURCE_DATE_EPOCH / 86400)):/" /etc/shadow; \
+       fi
 
 WORKDIR /home/runner
 
@@ -87,7 +116,8 @@ COPY --link --chown=1001:123 --chmod=777 tools /home/runner/_work/_tool
 #########################################
 ## Begin OS Software Customizations    ##
 #########################################
-RUN apt-get update -y \
+RUN --mount=type=bind,source=apt-reproducible.sh,target=/tmp/apt-reproducible.sh \
+    apt-get update -y --error-on=any \
     && apt-get install -y --no-install-recommends \
     git \
     make \
@@ -104,9 +134,11 @@ RUN apt-get update -y \
     build-essential \
     htop \
     psmisc \
-    openssh-client
+    openssh-client \
+    && bash /tmp/apt-reproducible.sh clean \
+    && bash /tmp/apt-reproducible.sh unpin
 
-ARG TARGET_ARCH
+ARG TARGET_ARCH=amd64
 ARG JFROG_CLI_VERSION=2.133.0
 RUN JF_URL="https://releases.jfrog.io/artifactory/jfrog-cli/v2-jf/${JFROG_CLI_VERSION}/jfrog-cli-linux-${TARGET_ARCH}/jf" \
     && curl -fsSLo /tmp/jf "${JF_URL}" \
@@ -133,26 +165,34 @@ RUN curl -fsSLo /usr/local/bin/semver \
     && chmod 755 /usr/local/bin/semver
 
 ARG GH_CLI_VERSION=2.104.0
+ARG GH_CLI_SHA256=98cb101ad87dbbd3f6b2f2bfcbd43197ccd07643140121d8a9cfaa91eadbc24e
 RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
-    && curl -sL https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz \
-        | tar -xz --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
-    && chmod +x /usr/local/bin/gh
+    && curl -fsSLo /tmp/gh.tar.gz \
+        "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_linux_${ARCH}.tar.gz" \
+    && echo "${GH_CLI_SHA256}  /tmp/gh.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/gh.tar.gz --no-same-owner --wildcards --strip-components=2 -C /usr/local/bin "*/bin/gh" \
+    && chmod +x /usr/local/bin/gh \
+    && rm -f /tmp/gh.tar.gz
 
 ARG YQ_CLI_VERSION=4.54.3
+ARG YQ_CLI_SHA256=129534601871538efe0ba4c5e62a34fb1d5f469bcb975c4fddeb467d82974973
 RUN export ARCH=${TARGET_ARCH} \
     && if [ "${ARCH}" = "i386" ]; then export ARCH=386 ; fi \
-    && curl -fLo /usr/local/bin/yq \
+    && curl -fsSLo /usr/local/bin/yq \
         "https://github.com/mikefarah/yq/releases/download/v${YQ_CLI_VERSION}/yq_linux_${ARCH}" \
+    && echo "${YQ_CLI_SHA256}  /usr/local/bin/yq" | sha256sum -c - \
     && chmod +x /usr/local/bin/yq
 
 ARG COMPOSE_VERSION=5.7.1
+ARG COMPOSE_SHA256=af426722a8af5de812fcee30cc1c39f0639f5f723cbadefb25e5d4db054064cf
 RUN export RUNNER_ARCH=${TARGET_ARCH} \
     && if [ "${RUNNER_ARCH}" = "amd64" ]; then export DOCKER_ARCH=x86_64 ; fi \
     && if [ "${RUNNER_ARCH}" = "arm64" ]; then export DOCKER_ARCH=aarch64 ; fi \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
-    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
+    && curl -fsSLo /usr/local/lib/docker/cli-plugins/docker-compose \
         "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
+    && echo "${COMPOSE_SHA256}  /usr/local/lib/docker/cli-plugins/docker-compose" | sha256sum -c - \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 # ansible-core 2.22 requires Python >= 3.13, which none of the base OS images ship. A pinned, checksum-verified
@@ -179,9 +219,6 @@ RUN --mount=type=bind,source=ansible-requirements.txt,target=/tmp/ansible-requir
     && ln -s /opt/ansible/bin/ansible* /opt/ansible/bin/yamllint /opt/ansible/bin/molecule /usr/local/bin/ \
     && rm -f /tmp/uv "/tmp/${UV_ASSET}" "/tmp/${UV_ASSET}.sha256"
 ENV PATH="${PATH}:/opt/ansible/bin"
-
-RUN apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
 
 #########################################
 ## End OS Software Customizations      ##

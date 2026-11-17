@@ -17,7 +17,11 @@
 name: "ZXC: Build ScaleSet Images"
 # This reusable component is called by the following workflows:
 # - .github/workflows/flow-pull-request-checks.yaml
-# - .github/workflows/flow-build-application.yaml
+# - .github/workflows/flow-release-scaleset-images.yaml
+#
+# Images are built for linux/amd64 only. Builds are reproducible: SOURCE_DATE_EPOCH (the commit time) fixes the apt
+# snapshot and every file and config timestamp, and every downloaded artifact is verified against a pinned SHA-256.
+# Docker, buildx, and GitHub CLI versions are pinned (with checksums) in the Dockerfiles, not passed in here.
 
 on:
   workflow_call:
@@ -45,6 +49,12 @@ on:
         type: string
         required: true
 
+      ## SHA-256 of the upstream actions-runner-linux-x64 tarball (from zxc-retrieve-upstream-versions.yaml)
+      runner-sha256:
+        description: "Runner Tarball SHA-256:"
+        type: string
+        required: true
+
       ## Upstream Github Action Runner Container Hooks Version
       runner-container-hooks-version:
         description: "Container Hooks Version:"
@@ -52,36 +62,22 @@ on:
         required: false
         default: "0.8.1"
 
-      ## Upstream Docker Version
-      docker-version:
-        description: "Docker Version:"
+      ## SHA-256 of the upstream actions-runner-hooks-k8s zip (from zxc-retrieve-upstream-versions.yaml)
+      runner-container-hooks-sha256:
+        description: "Container Hooks Zip SHA-256:"
         type: string
-        required: false
-        default: "29.10.0"
-
-      ## Upstream Docker Buildx Version
-      docker-buildx-version:
-        description: "Docker Buildx Version:"
-        type: string
-        required: false
-        default: "0.39.0"
-
-      # Upstream Github CLI Version
-      gh-cli-version:
-        description: "Github CLI Version:"
-        type: string
-        required: false
-        default: "2.104.0"
-
-      ## Linux Architectures for Multi-Arch Builds
-      platforms:
-        description: "Platforms:"
-        type: string
-        required: false
-        default: "linux/amd64"
+        required: true
 
       dry-run-enabled:
         description: "Perform Dry Run"
+        type: boolean
+        required: false
+        default: false
+
+      ## Build the image a second time from scratch (fresh tool cache, no build cache) and fail unless both builds
+      ## produce the same image digest. Only applies to dry runs.
+      verify-reproducibility:
+        description: "Verify Reproducible Build"
         type: boolean
         required: false
         default: false
@@ -106,8 +102,12 @@ permissions:
 
 jobs:
   create-tool-cache:
-    name: Create Tool Cache
+    # The primary replica keeps the original job name, which branch protection requires.
+    name: ${{ matrix.replica == 'primary' && 'Create Tool Cache' || 'Create Tool Cache (Replica)' }}
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        replica: ${{ fromJSON((inputs.verify-reproducibility && inputs.dry-run-enabled) && '["primary", "replica"]' || '["primary"]') }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
@@ -116,6 +116,11 @@ jobs:
 
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Exported before any tool is installed so installers that honor it (such as Python's compileall) avoid
+      # embedding install-time timestamps; the archive below clamps every timestamp to the commit time.
+      - name: Set Source Date Epoch
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >>"${GITHUB_ENV}"
 
       - name: Install WGet
         run: sudo apt update && sudo apt install -y --no-install-recommends wget
@@ -178,22 +183,40 @@ jobs:
         with:
           terraform_version: "1.17.2"
 
+      # Running Python (setup-python's pip upgrade) rewrites the stdlib .pyc files of every module it imports with the
+      # install-time source mtime, which differs between runs and goes stale once the archive clamps mtimes. Recompile
+      # the whole tree as checked-hash .pyc files (valid regardless of mtime); PYTHONHASHSEED fixes the order of set
+      # constants. The excluded paths are CPython test fixtures that intentionally fail to compile.
+      - name: Normalize Python Bytecode
+        run: |
+          for py in "${{ runner.tool_cache }}"/Python/*/x64/bin/python3; do
+            PYTHONHASHSEED=0 "${py}" -W ignore -P -s -m compileall -f -q -o 0 -o 1 -o 2 \
+              --invalidation-mode checked-hash \
+              -x '/(bad_coding|badsyntax)[^/]*\.py$|/test_lib2to3/data/|/lib2to3/tests/data/' \
+              "$(dirname "$(dirname "${py}")")/lib"
+          done
+
       - name: Archive Tool Cache
-        working-directory: ${{ runner.tool_cache }}
-        run: tar -czf ${{ env.TOOL_CACHE_ARTIFACT_NAME }} *
+        run: |
+          tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --clamp-mtime --owner=0 --group=0 --numeric-owner \
+            -C "${{ runner.tool_cache }}" -cf - . | gzip -n >"${{ runner.temp }}/${{ env.TOOL_CACHE_ARTIFACT_NAME }}"
 
       - name: Upload Tool Cache
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: "ScaleSet Tools (${{ inputs.base-os-image }})"
+          name: "ScaleSet Tools (${{ inputs.base-os-image }}, ${{ matrix.replica }})"
           retention-days: 1
-          path: ${{ runner.tool_cache }}/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
+          path: ${{ runner.temp }}/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
 
   build-scaleset-images:
-    name: ${{ inputs.custom-job-label || 'Build' }}
+    # The primary replica keeps the original job name, which branch protection requires.
+    name: ${{ matrix.replica == 'primary' && (inputs.custom-job-label || 'Build') || format('{0} (Replica)', inputs.custom-job-label || 'Build') }}
     runs-on: ubuntu-24.04
     needs:
       - create-tool-cache
+    strategy:
+      matrix:
+        replica: ${{ fromJSON((inputs.verify-reproducibility && inputs.dry-run-enabled) && '["primary", "replica"]' || '["primary"]') }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
@@ -203,19 +226,20 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Set Source Date Epoch
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >>"${GITHUB_ENV}"
+
       - name: Download Tool Cache
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: "ScaleSet Tools (${{ inputs.base-os-image }})"
-          path: ${{ github.workspace }}/scaleset/runner/tools
+          name: "ScaleSet Tools (${{ inputs.base-os-image }}, ${{ matrix.replica }})"
+          path: ${{ runner.temp }}/tool-cache
 
       - name: Unpack Tool Cache
         run: |
-          tar -xzf ${{ github.workspace }}/scaleset/runner/tools/${{ env.TOOL_CACHE_ARTIFACT_NAME }} -C ${{ github.workspace }}/scaleset/runner/tools/
-          rm -f ${{ github.workspace }}/scaleset/runner/tools/${{ env.TOOL_CACHE_ARTIFACT_NAME }}
-
-      - name: Setup QEmu Support
-        uses: step-security/setup-qemu-action@8c4aef027ab2df56e08f597afe6dd8cd31cb84f5 # v3.7.0
+          mkdir -p "${{ github.workspace }}/scaleset/runner/tools"
+          tar -xzf "${{ runner.temp }}/tool-cache/${{ env.TOOL_CACHE_ARTIFACT_NAME }}" -C "${{ github.workspace }}/scaleset/runner/tools/"
+          rm -f "${{ runner.temp }}/tool-cache/${{ env.TOOL_CACHE_ARTIFACT_NAME }}"
 
       - name: Setup Docker Buildx Support
         uses: step-security/setup-buildx-action@f931205d68723ad9589fd2a7e2ece238bf9de341 # v4.0.0
@@ -262,19 +286,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # rewrite-timestamp clamps every file timestamp in the image layers to SOURCE_DATE_EPOCH.
+      # Releases push to GHCR; dry runs keep the image in the build cache, or export an OCI layout to compare when
+      # reproducibility is being verified.
       - name: Calculate Docker Registry
         id: registry
         run: |
           DOCKER_REGISTRY_PREFIX="ghcr.io/${{ github.repository }}"
-          IMG_RESULT="push"
+          IMG_OUTPUT="type=image,push=true,rewrite-timestamp=true"
+          OCI_DIR=""
 
           if [[ "${{ inputs.dry-run-enabled }}" == "true" ]]; then
             DOCKER_REGISTRY_PREFIX="local"
-            IMG_RESULT="cache"
+            IMG_OUTPUT="type=image,push=false,rewrite-timestamp=true"
+            if [[ "${{ inputs.verify-reproducibility }}" == "true" ]]; then
+              OCI_DIR="${{ runner.temp }}/image-oci"
+              IMG_OUTPUT="type=oci,dest=${OCI_DIR},tar=false,rewrite-timestamp=true"
+            fi
           fi
 
           echo "prefix=${DOCKER_REGISTRY_PREFIX}" >>"${GITHUB_OUTPUT}"
-          echo "operation=${IMG_RESULT}" >>"${GITHUB_OUTPUT}"
+          echo "output=${IMG_OUTPUT}" >>"${GITHUB_OUTPUT}"
+          echo "oci-dir=${OCI_DIR}" >>"${GITHUB_OUTPUT}"
 
       - name: Calculate Docker Tag
         id: docker-tag
@@ -287,18 +320,82 @@ jobs:
         with:
           context: ${{ github.workspace }}/scaleset/runner
           file: ${{ case(inputs.base-os-image == 'chainguard-wolfi', format('{0}/scaleset/runner/Dockerfile.chainguard', github.workspace), format('{0}/scaleset/runner/Dockerfile', github.workspace)) }}
-          platforms: ${{ inputs.platforms }}
-          push: ${{ steps.registry.outputs.operation == 'push' }}
-          load: ${{ steps.registry.outputs.operation == 'load' }}
+          platforms: linux/amd64
+          outputs: ${{ steps.registry.outputs.output }}
           tags: |
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:${{ inputs.base-os-image }}
             ${{ steps.registry.outputs.prefix }}/scaleset-runner:v${{ steps.docker-tag.outputs.version }}-${{ inputs.base-os-image }}
           build-args: |
+            SOURCE_DATE_EPOCH=${{ env.SOURCE_DATE_EPOCH }}
             TARGET_OS=linux
             TARGET_ARCH=amd64
             RUNNER_VERSION=${{ inputs.runner-version }}
+            RUNNER_SHA256=${{ inputs.runner-sha256 }}
             RUNNER_CONTAINER_HOOKS_VERSION=${{ inputs.runner-container-hooks-version }}
-            DOCKER_VERSION=${{ inputs.docker-version }}
-            BUILDX_VERSION=${{ inputs.docker-buildx-version }}
-            GH_CLI_VERSION=${{ inputs.gh-cli-version }}
+            RUNNER_CONTAINER_HOOKS_SHA256=${{ inputs.runner-container-hooks-sha256 }}
             BASE_OS_VERSION=${{ case(inputs.base-os-image == 'debian-bookworm', 'bookworm-slim', inputs.base-os-image == 'ubuntu-22.04', 'jammy', inputs.base-os-image == 'ubuntu-24.04', 'noble', inputs.base-os-image == 'chainguard-wolfi', 'dev', 'unknown') }}
+
+      - name: Summarize Image Contents
+        if: ${{ steps.registry.outputs.oci-dir != '' }}
+        run: python3 -I .github/scripts/oci-image-report.py "${{ steps.registry.outputs.oci-dir }}" "${{ runner.temp }}/image-report"
+
+      - name: Upload Image Report
+        if: ${{ steps.registry.outputs.oci-dir != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: "Image Report (${{ inputs.base-os-image }}, ${{ matrix.replica }})"
+          retention-days: 5
+          path: ${{ runner.temp }}/image-report
+
+  verify-reproducibility:
+    name: Reproducibility
+    runs-on: ubuntu-24.04
+    needs:
+      - build-scaleset-images
+    if: ${{ inputs.verify-reproducibility && inputs.dry-run-enabled }}
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@a90bcbc6539c36a85cdfeb73f7e2f433735f215b # v2.15.0
+        with:
+          egress-policy: audit
+
+      - name: Download Image Reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: "Image Report (${{ inputs.base-os-image }}, *)"
+          path: ${{ runner.temp }}/reports
+
+      - name: Compare Builds
+        working-directory: ${{ runner.temp }}/reports
+        run: |
+          PRIMARY="Image Report (${{ inputs.base-os-image }}, primary)"
+          REPLICA="Image Report (${{ inputs.base-os-image }}, replica)"
+          PRIMARY_DIGEST="$(cat "${PRIMARY}/digest.txt")"
+          REPLICA_DIGEST="$(cat "${REPLICA}/digest.txt")"
+
+          {
+            echo "### Reproducibility (${{ inputs.base-os-image }})"
+            echo "| Build | Image manifest digest |"
+            echo "| --- | --- |"
+            echo "| primary | \`${PRIMARY_DIGEST}\` |"
+            echo "| replica | \`${REPLICA_DIGEST}\` |"
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+          if [[ "${PRIMARY_DIGEST}" == "${REPLICA_DIGEST}" ]]; then
+            echo "Both builds produced ${PRIMARY_DIGEST}"
+            exit 0
+          fi
+
+          echo "::group::Image config differences"
+          diff -u "${PRIMARY}/config.json" "${REPLICA}/config.json" || true
+          echo "::endgroup::"
+          echo "::group::Layer digest differences"
+          diff -u "${PRIMARY}/layers.txt" "${REPLICA}/layers.txt" || true
+          echo "::endgroup::"
+          echo "::group::File differences (layer, path, type, mode, uid, gid, size, mtime, link, pax, sha256)"
+          diff -u "${PRIMARY}/files.tsv" "${REPLICA}/files.tsv" | head -n 500 || true
+          echo "::endgroup::"
+          echo "::error title=Reproducibility::Two builds of the same commit produced different images (${PRIMARY_DIGEST} vs ${REPLICA_DIGEST}). The full reports are attached as workflow artifacts."
+          exit 1
