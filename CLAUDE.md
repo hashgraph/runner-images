@@ -19,7 +19,7 @@ Guidance for Claude Code working in this repository. This file covers project in
 
 `runner-images` builds customized [Actions Runner Controller](https://github.com/actions/actions-runner-controller) (ARC) container images for Hedera's GitHub Actions self-hosted runners, and publishes them to the GitHub Container Registry (`ghcr.io/hashgraph/runner-images`). The repository holds **Dockerfiles plus the GitHub Actions automation that builds, versions, and releases them** — it ships container images, not application code or a daemon.
 
-The actual runner binary is upstream (`actions/runner`); this repo wraps it in an image preloaded with a developer toolchain (git, docker CLI + buildx + compose, gh, jq, yq, skopeo, ansible, task, semver, jfrog CLI, …) and a hosted **tool cache** (Java, Node, Go, Kind, Helm, Terraform) baked in at `/home/runner/_work/_tool`. When in doubt about whether to add something, prefer keeping the image lean and the build reproducible over adding convenience tooling.
+The actual runner binary is upstream (`actions/runner`); this repo wraps it in an image preloaded with a developer toolchain (git, docker CLI + buildx + compose, gh, jq, yq, skopeo, ansible, task, semver, jfrog CLI, …) and a hosted **tool cache** (Java, Node, Go, Python, Kind, Helm, buildx) baked in at `/home/runner/_work/_tool`. When in doubt about whether to add something, prefer keeping the image lean and the build reproducible over adding convenience tooling.
 
 **License**: Apache License 2.0. Source files that carry a copyright header use the `Copyright (C) <year> Hedera Hashgraph, LLC` Apache 2.0 block — copy it from any existing workflow when adding a new one. This is an open-source repo; do not introduce a proprietary or confidential header.
 
