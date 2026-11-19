@@ -9,4 +9,4 @@
 #   tools   final stage, "OS Software Customizations" toolchain
 build   curl unzip
 system  sudo lsb-release-minimal gpg-agent bash gnutar
-tools   git make wget gnupg tree curl unzip zip gzip jq skopeo htop psmisc openssh-client py3-ansible-runner
+tools   git make wget gnupg tree curl unzip zip gzip zstd jq skopeo htop psmisc openssh-client py3-ansible-runner
