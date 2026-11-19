@@ -128,11 +128,10 @@ jobs:
       - name: Clear Hosted Tool Cache
         run: rm -rvf "${{ runner.tool_cache }}"/*
 
-      - name: Setup Google Cloud SDK
-        uses: step-security/setup-gcloud@eca4ba5778ff559fbc5cb59ab4db7ecdcf779b98 # v3.0.1
-        with:
-          version: "593.0.0"
-
+      # setup-* actions reuse a tool cache entry only when it matches the requested version exactly, so the versions
+      # below track what workflows on these runners pin. Tools whose setup action never reads the tool cache
+      # (hashicorp/setup-terraform), or whose callers resolve "latest" at run time (step-security/setup-gcloud), are
+      # deliberately not cached here.
       - name: Setup Java
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
@@ -149,10 +148,10 @@ jobs:
         with:
           node-version: "24.22.3"
 
-      - name: Setup GoLang 1.25
+      - name: Setup GoLang 1.27
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "1.25.14"
+          go-version: "1.27.4"
 
       - name: Setup Python 3.12.13
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -160,28 +159,36 @@ jobs:
           python-version: "3.12.13"
           pip-version: "26.1.2"
 
-      - name: Setup Kind
-        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
-        with:
-          install_only: true
-          version: v0.33.0
-          kubectl_version: v1.37.2
+      # helm/kind-action caches kind and kubectl under one directory keyed only by the kind version
+      # (kind/<version>/amd64/{kind,kubectl}/bin) and installs each binary only when it is missing. Preload the kind
+      # binary alone so every workflow still gets the kubectl_version it asks for. Checksums are the upstream
+      # kind-linux-amd64.sha256sum values.
+      - name: Preload Kind
+        run: |
+          while read -r version sha256; do
+            dir="${{ runner.tool_cache }}/kind/${version}/amd64/kind/bin"
+            mkdir -p "${dir}"
+            curl -fsSLo "${dir}/kind" "https://github.com/kubernetes-sigs/kind/releases/download/${version}/kind-linux-amd64"
+            echo "${sha256}  ${dir}/kind" | sha256sum -c -
+            chmod 0755 "${dir}/kind"
+          done <<'EOF'
+          v0.26.0 d445b44c28297bc23fd67e51cc24bb294ae7b977712be2d4d312883d0835829b
+          v0.29.0 c72eda46430f065fb45c5f70e7c957cc9209402ef309294821978677c8fb3284
+          v0.33.0 aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d
+          EOF
 
       - name: Setup Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: v4.3.2
 
+      # Workflows that set no buildx version use the docker-buildx plugin installed by the Dockerfile (BUILDX_VERSION);
+      # this cache entry serves the ones that pin a version.
       - name: Setup Docker Buildx Support
         uses: step-security/setup-buildx-action@f931205d68723ad9589fd2a7e2ece238bf9de341 # v4.0.0
         with:
-          version: v0.39.0
+          version: v0.32.1
           driver-opts: network=host,image=ghcr.io/hashgraph/runner-images/buildkit:buildx-stable-1
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
-        with:
-          terraform_version: "1.17.2"
 
       # Running Python (setup-python's pip upgrade) rewrites the stdlib .pyc files of every module it imports with the
       # install-time source mtime, which differs between runs and goes stale once the archive clamps mtimes. Recompile
