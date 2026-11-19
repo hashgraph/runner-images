@@ -128,6 +128,7 @@ RUN --mount=type=bind,source=apt-reproducible.sh,target=/tmp/apt-reproducible.sh
     unzip \
     zip \
     gzip \
+    zstd \
     jq \
     skopeo \
     python3-pip \
